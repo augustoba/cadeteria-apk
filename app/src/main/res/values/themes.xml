@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema base de la Activity (antes de que Compose tome control) — el theming real
+         de la UI vive en ui/theme/Theme.kt. -->
+    <style name="Theme.CadeteApp" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen (androidx.core:core-splashscreen): logo de CADEM centrado sobre
+         fondo negro, después pasa a Theme.CadeteApp. La activity setea este tema y llama
+         a installSplashScreen() en onCreate() (ver MainActivity.kt). -->
+    <style name="Theme.CadeteApp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.CadeteApp</item>
+    </style>
+</resources>

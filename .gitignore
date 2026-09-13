@@ -1,0 +1,19 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Secretos que no van al repo (ver README, cada uno los genera/descarga aparte)
+app/google-services.json
+app/*.jks
+app/*.keystore
+
+# Wrapper de Gradle: el .jar no se versiona a mano en este repo (ver README —
+# "Primer build"), pero sí las properties/scripts si se regeneran.
+gradle/wrapper/gradle-wrapper.jar
