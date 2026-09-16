@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,7 +49,9 @@ import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.navigation.Routes
+import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.CademOrange
+import com.cadeteria.cadete.ui.theme.CallBlue
 import com.cadeteria.cadete.ui.theme.Emerald600
 import com.cadeteria.cadete.ui.theme.Gray500
 
@@ -129,7 +134,7 @@ fun HistorialScreen(onAbrirViaje: (String) -> Unit, onIrDashboard: () -> Unit, o
                     item {
                         OutlinedButton(
                             onClick = { cantidadVisible += TAMANO_PAGINA },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
                         ) { Text("Mostrar más (${h.pedidos.size - cantidadVisible} más)") }
                     }
                 }
@@ -207,16 +212,29 @@ private fun PedidoFinalizadoCard(pedido: PedidoDto, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Aceptado ${horaCorta(pedido.aceptadoEn)} · Retirado ${horaCorta(pedido.retiradoEn)} · Entregado ${horaCorta(pedido.finalizadoEn)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Gray500,
-                )
+                Spacer(Modifier.height(6.dp))
+                // Antes era una sola línea gris con las 3 horas separadas por "·" — con
+                // ícono y color por evento se escanea la lista más rápido (auditoría UX
+                // 2026-09-15), sin tener que leer la palabra completa de cada uno.
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MiniEvento(Icons.Filled.PlayArrow, horaCorta(pedido.aceptadoEn), CallBlue)
+                    MiniEvento(Icons.Filled.Inventory2, horaCorta(pedido.retiradoEn), Amber500)
+                    MiniEvento(Icons.Filled.DoneAll, horaCorta(pedido.finalizadoEn), Emerald600)
+                }
             }
             Text("$${pedido.precio}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = CademOrange)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Gray500, modifier = Modifier.size(14.dp))
         }
+    }
+}
+
+/** Un evento del timeline (aceptado/retirado/entregado): ícono + hora, mismo color para asociarlos de un vistazo. */
+@Composable
+private fun MiniEvento(icono: androidx.compose.ui.graphics.vector.ImageVector, hora: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(hora, style = MaterialTheme.typography.bodySmall, color = color, fontWeight = FontWeight.Medium)
     }
 }

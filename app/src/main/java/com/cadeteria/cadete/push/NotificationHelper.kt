@@ -68,11 +68,20 @@ object NotificationHelper {
 
     const val EXTRA_DESTINO = "destino"
     const val DESTINO_CHAT = "CHAT"
+    /** Nuevo viaje asignado: tocar la notificación abre directo el detalle del pedido en vez
+     * del Dashboard (auditoría UX 2026-09-15) — con el tiempo límite para aceptar corriendo,
+     * cada toque de más cuenta. */
+    const val DESTINO_VIAJE = "VIAJE"
+    const val EXTRA_PEDIDO_ID = "pedidoId"
 
-    fun mostrar(context: Context, canal: String, id: Int, titulo: String, cuerpo: String) {
+    fun mostrar(
+        context: Context, canal: String, id: Int, titulo: String, cuerpo: String,
+        destino: String? = null, pedidoId: String? = null,
+    ) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (canal == CANAL_CHAT) putExtra(EXTRA_DESTINO, DESTINO_CHAT)
+            if (destino != null) putExtra(EXTRA_DESTINO, destino)
+            if (pedidoId != null) putExtra(EXTRA_PEDIDO_ID, pedidoId)
         }
         // requestCode = id (no una constante fija): si no, todas las notificaciones activas
         // comparten el mismo PendingIntent y tocar una vieja terminaba abriendo el destino

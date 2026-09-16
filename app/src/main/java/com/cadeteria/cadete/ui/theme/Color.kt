@@ -19,9 +19,22 @@ val Amber50 = Color(0xFFFFFBEB)
 val Red600 = Color(0xFFDC2626)
 val Red50 = Color(0xFFFEF2F2)
 
+// Colores de acción del detalle de viaje: cada botón usa el color asociado a lo que hace
+// (igual que el logo real de cada app) para que se distingan de un vistazo, no solo por el
+// texto/emoji.
+val CallBlue = Color(0xFF2563EB)
+val WhatsappGreen = Color(0xFF25D366)
+val MapsBlue = Color(0xFF1A73E8)
+// Cyan de Waze un poco más oscuro que el de su logo: el original (0xFF33CCFF) es
+// demasiado claro para texto/ícono blanco encima (falla contraste).
+val WazeCyan = Color(0xFF0891B2)
+
 val Gray50 = Color(0xFFFAFAFA)
 val Gray100 = Color(0xFFF3F4F6)
 val Gray300 = Color(0xFFD1D5DB)
-val Gray500 = Color(0xFF6B7280)
+// Un poco más oscuro que el gris "estándar" (0xFF6B7280) a propósito: este es el texto
+// secundario (horarios, etiquetas) que un cadete tiene que poder leer de un vistazo con el
+// sol pegando en la pantalla — más contraste contra blanco ayuda ahí (auditoría UX 2026-09-15).
+val Gray500 = Color(0xFF57606A)
 val Gray700 = Color(0xFF374151)
 val Gray900 = Color(0xFF111827)

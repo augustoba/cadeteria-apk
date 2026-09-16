@@ -19,13 +19,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.StickyNote2
+import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -54,9 +69,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -67,7 +84,15 @@ import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.BannerInfo
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
+import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.ui.theme.Amber500
+import com.cadeteria.cadete.ui.theme.CallBlue
+import com.cadeteria.cadete.ui.theme.Emerald600
+import com.cadeteria.cadete.ui.theme.Gray500
+import com.cadeteria.cadete.ui.theme.MapsBlue
+import com.cadeteria.cadete.ui.theme.WazeCyan
+import com.cadeteria.cadete.ui.theme.WhatsappGreen
 import com.google.android.gms.location.LocationServices
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -135,6 +160,25 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 },
             )
         },
+        bottomBar = {
+            // Pegado abajo y siempre visible, sin scrollear — con el reloj corriendo para
+            // aceptar, no puede depender de que el cadete baje hasta el final de la pantalla
+            // (auditoría UX 2026-09-15: antes quedaba debajo del mapa y la tarjeta de datos).
+            val viaje = state.viaje
+            if (viaje != null && !state.cargando && !state.finalizarEncolado && viaje.estado.id == EstadoPedido.PENDIENTE) {
+                Surface(tonalElevation = 3.dp, shadowElevation = 12.dp) {
+                    Column(Modifier.padding(16.dp)) {
+                        AccionesPendiente(
+                            enviando = state.enviando,
+                            asignadoEn = viaje.asignadoEn,
+                            tiempoLimiteSeg = state.tiempoLimiteAceptacionSeg,
+                            onAceptar = vm::aceptar,
+                            onRechazar = { mostrarRechazar = true },
+                        )
+                    }
+                }
+            }
+        },
     ) { padding ->
         val viaje = state.viaje
         if (state.cargando || viaje == null) {
@@ -173,62 +217,85 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
             }
 
-            Text("Pedido Nº ${viaje.numero}", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
+            Text(
+                "Pedido Nº ${viaje.numero}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(10.dp))
 
             MapaViaje(viaje, state.ruta?.features?.firstOrNull()?.geometry?.coordinates)
             Spacer(Modifier.height(16.dp))
 
-            Text("Origen", style = MaterialTheme.typography.labelLarge)
-            Text(viaje.origenDireccion)
-            Spacer(Modifier.height(8.dp))
-            Text("Destino", style = MaterialTheme.typography.labelLarge)
-            Text(viaje.destinoDireccion)
-            Spacer(Modifier.height(8.dp))
-            Text("Precio", style = MaterialTheme.typography.labelLarge)
-            Text("$${viaje.precio}")
-            if (viaje.montoDeclarado != null && viaje.montoDeclarado > 0) {
-                Spacer(Modifier.height(8.dp))
-                Text("Va con dinero", style = MaterialTheme.typography.labelLarge)
-                Text("$${viaje.montoDeclarado}")
-            }
-            if (!viaje.detalle.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text("Detalle", style = MaterialTheme.typography.labelLarge)
-                Text(viaje.detalle)
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    FilaInfo(Icons.Filled.TripOrigin, "Origen", viaje.origenDireccion, MaterialTheme.colorScheme.primary)
+                    FilaInfo(Icons.Filled.LocationOn, "Destino", viaje.destinoDireccion, MaterialTheme.colorScheme.error)
+                    FilaInfo(Icons.Filled.Payments, "Precio", "$${viaje.precio}", Emerald600)
+                    if (viaje.montoDeclarado != null && viaje.montoDeclarado > 0) {
+                        FilaInfo(Icons.Filled.Payments, "Va con dinero", "$${viaje.montoDeclarado}", Amber500)
+                    }
+                    if (!viaje.detalle.isNullOrBlank()) {
+                        FilaInfo(Icons.Filled.StickyNote2, "Detalle", viaje.detalle, Gray500)
+                    }
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
             val yaRetirado = !viaje.retiradoEn.isNullOrBlank() || state.retiradoEncolado
             val destinoNavegacion = if (yaRetirado) viaje.destinoLat to viaje.destinoLng else viaje.origenLat to viaje.origenLng
+            // El cadete solo debería tener el teléfono del cliente a mano mientras el viaje
+            // está en curso: antes de aceptar todavía no es suyo, y una vez finalizado ya no
+            // tiene motivo para contactarlo.
+            val puedeContactarCliente = viaje.estado.id == EstadoPedido.EN_CURSO
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { llamarACliente(context, viaje.clienteTelefono) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) { Text("📞 Llamar al cliente") }
+                if (puedeContactarCliente) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        BotonAccion(
+                            texto = "Llamar",
+                            icono = Icons.Filled.Call,
+                            color = CallBlue,
+                            onClick = { llamarACliente(context, viaje.clienteTelefono) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        BotonAccion(
+                            texto = "WhatsApp",
+                            icono = Icons.Filled.Chat,
+                            color = WhatsappGreen,
+                            onClick = { enviarWhatsapp(context, viaje.clienteTelefono) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
+                    BotonAccion(
+                        texto = "Maps",
+                        icono = Icons.Filled.Map,
+                        color = MapsBlue,
                         onClick = { abrirEnMaps(context, destinoNavegacion.first, destinoNavegacion.second) },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                    ) { Text("🗺 Maps") }
-                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                    )
+                    BotonAccion(
+                        texto = "Waze",
+                        icono = Icons.Filled.Navigation,
+                        color = WazeCyan,
                         onClick = { abrirEnWaze(context, destinoNavegacion.first, destinoNavegacion.second) },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                    ) { Text("🧭 Waze") }
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
             when (viaje.estado.id) {
-                EstadoPedido.PENDIENTE -> AccionesPendiente(
-                    enviando = state.enviando,
-                    asignadoEn = viaje.asignadoEn,
-                    tiempoLimiteSeg = state.tiempoLimiteAceptacionSeg,
-                    onAceptar = vm::aceptar,
-                    onRechazar = { mostrarRechazar = true },
-                )
+                // El bloque Aceptar/Rechazar de este estado vive en el bottomBar (ver arriba).
+                EstadoPedido.PENDIENTE -> {}
                 EstadoPedido.EN_CURSO -> AccionesEnCurso(
                     viaje = viaje,
                     yaRetirado = yaRetirado,
@@ -353,13 +420,6 @@ private fun NoEntregadoDialog(enviando: Boolean, onDismiss: () -> Unit, onConfir
     )
 }
 
-/** "2026-09-13T02:14:37Z" -> millis desde epoch (UTC), sin depender de java.time (minSdk 24 sin desugaring). */
-private fun parsearInstanteUtc(iso: String): Long? = runCatching {
-    val formato = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-    formato.timeZone = java.util.TimeZone.getTimeZone("UTC")
-    formato.parse(iso.take(19))?.time
-}.getOrNull()
-
 @Composable
 private fun AccionesPendiente(
     enviando: Boolean,
@@ -373,37 +433,21 @@ private fun AccionesPendiente(
         return
     }
 
-    val inicioMs = remember(asignadoEn) { asignadoEn?.let(::parsearInstanteUtc) }
-    var segundosRestantes by remember(asignadoEn) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(inicioMs, tiempoLimiteSeg) {
-        if (inicioMs == null) return@LaunchedEffect
-        while (true) {
-            val transcurridoSeg = (System.currentTimeMillis() - inicioMs) / 1000
-            val restante = (tiempoLimiteSeg - transcurridoSeg).toInt()
-            segundosRestantes = restante
-            if (restante <= 0) break
-            kotlinx.coroutines.delay(1000)
-        }
-    }
-
     Column {
-        Text(
-            "Tenés un viaje nuevo — si no lo tomás a tiempo se le ofrece a otro cadete.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        segundosRestantes?.let { restante ->
-            Spacer(Modifier.height(6.dp))
-            val urgente = restante <= 15
-            Text(
-                if (restante > 0) "⏱ Te quedan $restante segundos para responder" else "⏱ Se agotó el tiempo — puede que ya se le ofrezca a otro cadete",
-                style = MaterialTheme.typography.titleMedium,
-                color = if (urgente) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
-            )
-        }
+        ContadorAceptacion(asignadoEn, tiempoLimiteSeg)
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onAceptar, modifier = Modifier.weight(1f)) { Text("Aceptar") }
-            OutlinedButton(onClick = onRechazar, modifier = Modifier.weight(1f)) { Text("Rechazar") }
+            Button(
+                onClick = onAceptar,
+                modifier = Modifier.weight(1f).height(52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+            ) { Text("✅ Aceptar", fontWeight = FontWeight.SemiBold) }
+            OutlinedButton(
+                onClick = onRechazar,
+                modifier = Modifier.weight(1f).height(52.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+            ) { Text("Rechazar") }
         }
     }
 }
@@ -473,14 +517,17 @@ private fun AccionesEnCurso(
                 Image(it.asImageBitmap(), contentDescription = null, modifier = Modifier.height(120.dp))
                 Spacer(Modifier.height(8.dp))
             }
-            OutlinedButton(onClick = { tomarFotoRetiro.launch(null) }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { tomarFotoRetiro.launch(null) },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
                 Text(if (fotoRetiro == null) "Sacar foto del retiro (opcional)" else "Sacar otra foto")
             }
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = { onMarcarRetirado(fotoRetiro?.let { guardarBitmapTemporal(context, it) }) },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("📦 Marcar como retirado") }
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) { Text("📦 Marcar como retirado", fontWeight = FontWeight.SemiBold) }
             Spacer(Modifier.height(16.dp))
         } else {
             BannerInfo("Ya marcaste que retiraste el pedido.")
@@ -499,15 +546,23 @@ private fun AccionesEnCurso(
                     if (parada.entregadoEn != null) {
                         Text("✅", style = MaterialTheme.typography.bodyMedium)
                     } else if (yaRetirado) {
-                        OutlinedButton(onClick = { onParadaEntregadaClick(parada.id) }) { Text("Entregada") }
+                        OutlinedButton(
+                            onClick = { onParadaEntregadaClick(parada.id) },
+                            modifier = Modifier.height(44.dp),
+                        ) { Text("Entregada") }
                     }
                 }
             }
             Spacer(Modifier.height(12.dp))
         }
 
-        Button(onClick = onFinalizarClick, enabled = paradasPendientes.isEmpty(), modifier = Modifier.fillMaxWidth()) {
-            Text("Finalizar viaje")
+        Button(
+            onClick = onFinalizarClick,
+            enabled = paradasPendientes.isEmpty(),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+        ) {
+            Text("✅ Finalizar viaje", fontWeight = FontWeight.SemiBold)
         }
         if (paradasPendientes.isNotEmpty()) {
             Text(
@@ -518,12 +573,17 @@ private fun AccionesEnCurso(
         }
         if (yaRetirado) {
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onNoEntregadoClick, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = onNoEntregadoClick,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+            ) {
                 Text("⚠️ No se pudo entregar")
             }
         }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onComentarioClick, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onComentarioClick, modifier = Modifier.fillMaxWidth().height(48.dp)) {
             Text("💬 Agregar comentario")
         }
     }
@@ -713,8 +773,45 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
     )
 }
 
+/** Fila del cartel de datos del viaje: ícono coloreado + etiqueta chica + valor. */
+@Composable
+private fun FilaInfo(icono: ImageVector, etiqueta: String, valor: String, colorIcono: Color) {
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(icono, contentDescription = null, tint = colorIcono, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = Gray500)
+            Text(valor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+/**
+ * Botón de acción con color propio (uno por app externa: llamada, WhatsApp, Maps, Waze) para
+ * que se distingan de un vistazo y no solo por el ícono/emoji (pedido del dueño).
+ */
+@Composable
+private fun BotonAccion(texto: String, icono: ImageVector, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(52.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
+    ) {
+        Icon(icono, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(texto, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 private fun llamarACliente(context: Context, telefono: String) {
     context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$telefono")))
+}
+
+/** wa.me abre la app de WhatsApp si está instalada, o el navegador si no. */
+private fun enviarWhatsapp(context: Context, telefono: String) {
+    val numero = telefono.filter { it.isDigit() }
+    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$numero")))
 }
 
 /** Google Maps con navegación directa; si la app no está instalada, cae al navegador. */

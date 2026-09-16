@@ -41,8 +41,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun manejarIntent(intent: Intent?) {
-        if (intent?.getStringExtra(NotificationHelper.EXTRA_DESTINO) == NotificationHelper.DESTINO_CHAT) {
-            (application as CadeteApp).solicitarAbrirChat()
+        val app = application as CadeteApp
+        when (intent?.getStringExtra(NotificationHelper.EXTRA_DESTINO)) {
+            NotificationHelper.DESTINO_CHAT -> app.solicitarAbrirChat()
+            NotificationHelper.DESTINO_VIAJE -> {
+                intent.getStringExtra(NotificationHelper.EXTRA_PEDIDO_ID)?.let(app::solicitarAbrirViaje)
+            }
         }
     }
 }

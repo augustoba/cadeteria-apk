@@ -1,48 +1,33 @@
 package com.cadeteria.cadete.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cadeteria.cadete.ui.navigation.Routes
-import com.cadeteria.cadete.ui.theme.CademCharcoal
-import kotlinx.coroutines.launch
 
 /**
- * Estructura común de las 3 pantallas principales a las que se llega desde el menú lateral
- * (Dashboard/Historial/Perfil, ver 7 menu desplegable.jpeg en la raíz del repo) — abre con el
- * ícono ☰ en vez de una flecha de "volver", porque son destinos hermanos, no un flujo lineal.
+ * Estructura común de las 3 pantallas principales (Dashboard/Historial/Configuración).
+ * Antes esto era un menú lateral (☰) — se cambió a una barra de navegación inferior
+ * (auditoría UX 2026-09-15): con el celular en una mano arriba de la moto/bici, una barra
+ * fija abajo queda al alcance del pulgar y cambia de pantalla en un solo toque, contra
+ * dos toques (abrir el drawer, después elegir) y un ícono arriba a la izquierda, más lejos
+ * del agarre natural. "Salir" pasa a ser un ícono en la barra superior, visible en las 3.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,87 +42,55 @@ fun AppScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-
-    fun navegarYCerrar(accion: () -> Unit) {
-        scope.launch { drawerState.close() }
-        accion()
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                DrawerHeader(cadeteNombre)
-                Spacer(Modifier.height(8.dp))
-                NavigationDrawerItem(
-                    label = { Text("Dashboard") },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(title)
+                        if (!cadeteNombre.isNullOrBlank()) {
+                            Text(
+                                "Hola, $cadeteNombre",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    actions()
+                    IconButton(onClick = onCerrarSesion) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Salir",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
                     selected = currentRoute == Routes.HOME,
-                    onClick = { navegarYCerrar(onIrDashboard) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    onClick = onIrDashboard,
+                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                    label = { Text("Dashboard") },
                 )
-                NavigationDrawerItem(
-                    label = { Text("Historial") },
-                    icon = { Icon(Icons.Filled.History, contentDescription = null) },
+                NavigationBarItem(
                     selected = currentRoute == Routes.HISTORIAL,
-                    onClick = { navegarYCerrar(onIrHistorial) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    onClick = onIrHistorial,
+                    icon = { Icon(Icons.Filled.History, contentDescription = null) },
+                    label = { Text("Historial") },
                 )
-                NavigationDrawerItem(
-                    label = { Text("Configuración") },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                NavigationBarItem(
                     selected = currentRoute == Routes.PERFIL,
-                    onClick = { navegarYCerrar(onIrPerfil) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                NavigationDrawerItem(
-                    label = { Text("Salir") },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
-                    selected = false,
-                    colors = NavigationDrawerItemDefaults.colors(
-                        unselectedTextColor = MaterialTheme.colorScheme.error,
-                        unselectedIconColor = MaterialTheme.colorScheme.error,
-                    ),
-                    onClick = { navegarYCerrar(onCerrarSesion) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    onClick = onIrPerfil,
+                    icon = { Icon(Icons.Filled.Person, contentDescription = null) },
+                    label = { Text("Configuración") },
                 )
             }
         },
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(title) },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menú")
-                        }
-                    },
-                    actions = actions,
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                )
-            },
-        ) { padding -> content(padding) }
-    }
-}
-
-@Composable
-private fun DrawerHeader(cadeteNombre: String?) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(CademCharcoal)
-            .padding(20.dp),
-    ) {
-        CademWordmark(contraste = Color.White, tamano = 26.sp)
-        Spacer(Modifier.height(4.dp))
-        Text("cadeteria", color = Color(0xFFBDBDBD))
-        if (!cadeteNombre.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Text("Hola, $cadeteNombre", color = Color.White, style = MaterialTheme.typography.titleMedium)
-        }
-    }
+    ) { padding -> content(padding) }
 }

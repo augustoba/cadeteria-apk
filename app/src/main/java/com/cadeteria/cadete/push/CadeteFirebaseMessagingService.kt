@@ -31,7 +31,16 @@ class CadeteFirebaseMessagingService : FirebaseMessagingService() {
         val cuerpo = message.notification?.body ?: ""
 
         val canal = if (tipo == "CHAT") NotificationHelper.CANAL_CHAT else NotificationHelper.CANAL_VIAJES
-        NotificationHelper.mostrar(applicationContext, canal, id = tipo.hashCode(), titulo = titulo, cuerpo = cuerpo)
+        val destino = when (tipo) {
+            "CHAT" -> NotificationHelper.DESTINO_CHAT
+            EventoViaje.VIAJE_ASIGNADO -> NotificationHelper.DESTINO_VIAJE
+            else -> null
+        }
+        val pedidoId = if (tipo == EventoViaje.VIAJE_ASIGNADO) message.data["pedidoId"] else null
+        NotificationHelper.mostrar(
+            applicationContext, canal, id = tipo.hashCode(), titulo = titulo, cuerpo = cuerpo,
+            destino = destino, pedidoId = pedidoId,
+        )
 
         Log.d("CadeteFCM", "Push recibido: tipo=$tipo pedidoId=${message.data["pedidoId"]}")
     }
