@@ -9,6 +9,17 @@
 .cxx
 local.properties
 
+# Artefactos de build de la app, se regeneran en cada compilación.
+# Excepción: el APK debug final sí se versiona a mano para distribuirlo a los cadetes.
+app/build/*
+!app/build/outputs/
+app/build/outputs/*
+!app/build/outputs/apk/
+app/build/outputs/apk/*
+!app/build/outputs/apk/debug/
+app/build/outputs/apk/debug/*
+!app/build/outputs/apk/debug/app-debug.apk
+
 # Secretos que no van al repo (ver README, cada uno los genera/descarga aparte)
 app/google-services.json
 app/*.jks
