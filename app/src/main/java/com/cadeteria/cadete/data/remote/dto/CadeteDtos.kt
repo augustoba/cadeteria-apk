@@ -3,6 +3,9 @@ package com.cadeteria.cadete.data.remote.dto
 /** Espeja CadeteDtos.AvisoGeneralResponse — avisos generales que este cadete todavía no vio (ronda 10, punto 98). */
 data class AvisoGeneralDto(val id: String, val mensaje: String)
 
+/** Espeja CadeteDtos.AvisoGeneralHistorialResponse — pantalla "Avisos" con historial (mejora 2026-09-16). */
+data class AvisoHistorialDto(val id: String, val mensaje: String, val enviadoEn: String, val leidoPorMi: Boolean)
+
 /** Espeja CadeteDtos.CadeteResponse del backend (GET /api/cadetes/me). */
 data class CadeteDto(
     val id: String,
@@ -69,6 +72,10 @@ data class CadeteConfigDto(
     val creditoBajoAlertaUmbral: Double,
     /** Para la cuenta regresiva real al ofrecer un viaje nuevo (auditoría UX 2026-09-13). */
     val tiempoLimiteAceptacionSeg: Int = 120,
+    /** Para la pantalla de Ayuda (mejora 2026-09-16) — vacío = esa pantalla no muestra botón de llamar. */
+    val telefonoSoporte: String = "",
+    /** Si hace falta carnet + tarjeta verde + foto del vehículo cargados para poder activarse (mejora 2026-09-16). */
+    val checklistDocumentacionObligatorio: Boolean = false,
 )
 
 /** Espeja PagoSemanalDtos.MiSemanaResponse (GET /api/cadetes/me/pago-semanal). */

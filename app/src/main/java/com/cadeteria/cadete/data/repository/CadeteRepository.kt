@@ -44,4 +44,8 @@ class CadeteRepository(private val retrofitProvider: RetrofitProvider) {
     /** Avisos generales que todavía no vio (ronda 10, punto 98). */
     suspend fun avisosPendientes(): Result<List<com.cadeteria.cadete.data.remote.dto.AvisoGeneralDto>> =
         runCatching { retrofitProvider.apiService().avisosPendientes() }
+
+    /** Pantalla "Avisos" con historial, ya leídos incluidos (mejora 2026-09-16). */
+    suspend fun historialAvisos(): Result<List<com.cadeteria.cadete.data.remote.dto.AvisoHistorialDto>> =
+        runCatching { retrofitProvider.apiService().historialAvisos() }
 }

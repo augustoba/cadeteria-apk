@@ -111,6 +111,9 @@ dependencies {
     // Carga de imágenes (foto de perfil/vehículo, vienen de Cloudinary)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // Widget de pantalla de inicio para activarse/desactivarse sin abrir la app (mejora 2026-09-16)
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

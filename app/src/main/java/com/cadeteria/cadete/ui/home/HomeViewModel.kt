@@ -10,6 +10,7 @@ import com.cadeteria.cadete.data.remote.dto.EstadoPedido
 import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.push.NotificationHelper
+import com.cadeteria.cadete.widget.CadeteWidget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,12 @@ data class HomeUiState(
     /** Aviso general del admin, como banner flotante arriba (además de la notificación del
      * sistema, que desaparece sola y no deja el mensaje visible en ningún lado). */
     val avisoFlotante: String? = null,
+    /** Para la cuenta regresiva del viaje PENDIENTE en la tarjeta de "Asignados y en curso". */
+    val tiempoLimiteAceptacionSeg: Int = 120,
+    /** Checklist de documentación obligatoria antes de activarse (mejora 2026-09-16). */
+    val checklistDocumentacionObligatorio: Boolean = false,
+    /** Si no está vacía, se muestra el diálogo de "te falta cargar esto antes de activarte". */
+    val documentacionFaltante: List<String> = emptyList(),
 )
 
 data class BienvenidaInfo(val nombre: String, val saldo: Double, val saldoBajo: Boolean)
@@ -47,7 +54,19 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
         cargarAvisosPendientes()
         cargarBienvenidaSiCorresponde()
         cargarRecordatoriosSiCorresponde()
+        cargarTiempoLimiteAceptacion()
         app.realtimeManager.start()
+    }
+
+    private fun cargarTiempoLimiteAceptacion() {
+        viewModelScope.launch {
+            app.cadeteRepository.miConfiguracion().onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    tiempoLimiteAceptacionSeg = it.tiempoLimiteAceptacionSeg,
+                    checklistDocumentacionObligatorio = it.checklistDocumentacionObligatorio,
+                )
+            }
+        }
     }
 
     /**
@@ -129,6 +148,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     .sortedByDescending { it.estado.id == EstadoPedido.PENDIENTE },
                 error = if (perfil.isFailure) "No se pudo cargar tu perfil." else null,
             )
+            perfil.getOrNull()?.let { CadeteWidget.sincronizarEstado(app, it.estado.id, it.nombre) }
         }
     }
 
@@ -148,7 +168,27 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
             )
             return
         }
+        if (nuevoEstado == EstadoCadete.LIBRE && _uiState.value.checklistDocumentacionObligatorio) {
+            val faltantes = documentacionFaltante(actual)
+            if (faltantes.isNotEmpty()) {
+                _uiState.value = _uiState.value.copy(documentacionFaltante = faltantes)
+                return
+            }
+        }
         cambiarEstado(nuevoEstado, onLocationServiceStart, onLocationServiceStop)
+    }
+
+    /** Checklist de documentación obligatoria antes de activarse (mejora 2026-09-16) — reviso a ojo lo mismo que ya valida el backend, para avisar antes de intentar y no solo mostrar el error genérico del 400. */
+    private fun documentacionFaltante(c: com.cadeteria.cadete.data.remote.dto.CadeteDto): List<String> {
+        val faltantes = mutableListOf<String>()
+        if (c.fotoCarnetUrl.isNullOrBlank()) faltantes.add("Carnet de conducir")
+        if (c.fotoTarjetaVerdeUrl.isNullOrBlank()) faltantes.add("Tarjeta verde")
+        if (c.fotoVehiculoUrl.isNullOrBlank()) faltantes.add("Foto del vehículo")
+        return faltantes
+    }
+
+    fun cerrarDialogoDocumentacion() {
+        _uiState.value = _uiState.value.copy(documentacionFaltante = emptyList())
     }
 
     /**
@@ -170,6 +210,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 .onSuccess { actualizado ->
                     _uiState.value = _uiState.value.copy(cadete = actualizado, cambiandoEstado = false)
                     if (nuevoEstado == EstadoCadete.DESCONECTADO) onLocationServiceStop() else onLocationServiceStart()
+                    CadeteWidget.sincronizarEstado(app, actualizado.estado.id, actualizado.nombre)
                 }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -193,6 +234,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     NotificationHelper.mostrar(
                         app, NotificationHelper.CANAL_VIAJES, evento.pedido.id.hashCode(),
                         "Nuevo viaje", "Tenés asignado el pedido #${evento.pedido.numero}.",
+                        destino = NotificationHelper.DESTINO_VIAJE, pedidoId = evento.pedido.id,
                     )
                 }
             }
@@ -225,7 +267,10 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 app.sumarChatNoLeido()
                 val cuerpo = mensaje.texto
                     ?: if (mensaje.audioUrl != null) "Nota de voz" else if (mensaje.imagenUrl != null) "Imagen" else "Nuevo mensaje"
-                NotificationHelper.mostrar(app, NotificationHelper.CANAL_CHAT, mensaje.id.hashCode(), "Nuevo mensaje", cuerpo)
+                NotificationHelper.mostrar(
+                    app, NotificationHelper.CANAL_CHAT, mensaje.id.hashCode(), "Nuevo mensaje", cuerpo,
+                    destino = NotificationHelper.DESTINO_CHAT,
+                )
             }
         }
     }

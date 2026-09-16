@@ -19,12 +19,15 @@ import androidx.navigation.navArgument
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.location.LocationServiceController
 import com.cadeteria.cadete.location.rememberUbicacionHabilitada
+import com.cadeteria.cadete.ui.avisos.AvisosScreen
+import com.cadeteria.cadete.ui.ayuda.AyudaScreen
 import com.cadeteria.cadete.ui.chat.ChatScreen
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.UbicacionDesactivadaScreen
 import com.cadeteria.cadete.ui.historial.HistorialScreen
 import com.cadeteria.cadete.ui.home.HomeScreen
 import com.cadeteria.cadete.ui.login.LoginScreen
+import com.cadeteria.cadete.ui.onboarding.OnboardingScreen
 import com.cadeteria.cadete.ui.perfil.PerfilScreen
 import com.cadeteria.cadete.ui.servidor.ServerConfigScreen
 import com.cadeteria.cadete.ui.viaje.ViajeScreen
@@ -67,6 +70,14 @@ fun CadeteNavGraph() {
     LaunchedEffect(Unit) {
         app.abrirChat.collect {
             if (app.sessionManager.isLoggedIn()) navController.navigate(Routes.CHAT)
+        }
+    }
+
+    // Se toca la notificación de "Nuevo viaje" (MainActivity.manejarIntent) — va directo al
+    // detalle de ese pedido en vez de dejar al cadete en el Dashboard para que lo busque él.
+    LaunchedEffect(Unit) {
+        app.abrirViaje.collect { pedidoId ->
+            if (app.sessionManager.isLoggedIn()) navController.navigate(Routes.viaje(pedidoId))
         }
     }
 
@@ -130,11 +141,27 @@ fun CadeteNavGraph() {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginOk = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    scope.launch {
+                        // Tutorial de bienvenida (mejora 2026-09-16) — una sola vez por dispositivo, ver OnboardingStore.
+                        val destino = if (app.onboardingStore.visto()) Routes.HOME else Routes.ONBOARDING
+                        navController.navigate(destino) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
                     }
                 },
                 onCambiarServidor = { navController.navigate(Routes.SERVIDOR) },
+            )
+        }
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(
+                onContinuar = {
+                    scope.launch {
+                        app.onboardingStore.marcarVisto()
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.ONBOARDING) { inclusive = true }
+                        }
+                    }
+                },
             )
         }
         composable(Routes.HOME) {
@@ -169,7 +196,15 @@ fun CadeteNavGraph() {
                 onIrDashboard = { irA(Routes.HOME) },
                 onIrHistorial = { irA(Routes.HISTORIAL) },
                 onCerrarSesion = ::cerrarSesion,
+                onIrAvisos = { navController.navigate(Routes.AVISOS) },
+                onIrAyuda = { navController.navigate(Routes.AYUDA) },
             )
+        }
+        composable(Routes.AVISOS) {
+            AvisosScreen(onVolver = { navController.popBackStack() })
+        }
+        composable(Routes.AYUDA) {
+            AyudaScreen(onVolver = { navController.popBackStack() })
         }
     }
 }

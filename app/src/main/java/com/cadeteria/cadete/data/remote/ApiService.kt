@@ -36,6 +36,10 @@ interface ApiService {
     @POST("api/cadetes/me/avisos/{id}/leido")
     suspend fun marcarAvisoLeido(@Path("id") id: String)
 
+    /** Pantalla "Avisos" con historial (mejora 2026-09-16) — a diferencia de [avisosPendientes], incluye los ya leídos. */
+    @GET("api/cadetes/me/avisos/historial")
+    suspend fun historialAvisos(): List<AvisoHistorialDto>
+
     @PATCH("api/cadetes/me/estado")
     suspend fun actualizarEstado(@Body req: EstadoRequest): CadeteDto
 

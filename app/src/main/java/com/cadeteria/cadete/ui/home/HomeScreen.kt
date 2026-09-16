@@ -24,10 +24,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -63,6 +64,7 @@ import com.cadeteria.cadete.ui.common.AppScaffold
 import com.cadeteria.cadete.ui.common.AvisoFlotante
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
+import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.navigation.Routes
 import com.cadeteria.cadete.ui.theme.Amber500
@@ -133,6 +135,21 @@ fun HomeScreen(
                 }
             },
             confirmButton = { Button(onClick = vm::cerrarRecordatorios) { Text("Entendido") } },
+        )
+    }
+
+    if (state.documentacionFaltante.isNotEmpty()) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = vm::cerrarDialogoDocumentacion,
+            title = { Text("Te falta cargar documentación") },
+            text = {
+                Column {
+                    Text("Antes de activarte, pedile al admin que te ayude a cargar:")
+                    Spacer(Modifier.height(8.dp))
+                    state.documentacionFaltante.forEach { Text("• $it") }
+                }
+            },
+            confirmButton = { Button(onClick = vm::cerrarDialogoDocumentacion) { Text("Entendido") } },
         )
     }
 
@@ -216,7 +233,11 @@ fun HomeScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         for (viaje in state.activos) {
-                            ViajeResumenCard(viaje, onVerDetalle = { onAbrirViaje(viaje.id) })
+                            ViajeResumenCard(
+                                viaje,
+                                tiempoLimiteAceptacionSeg = state.tiempoLimiteAceptacionSeg,
+                                onVerDetalle = { onAbrirViaje(viaje.id) },
+                            )
                         }
                     }
                 }
@@ -310,7 +331,12 @@ private fun EstadoVacio() {
             .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Filled.LocalShipping, contentDescription = null, tint = Gray500, modifier = Modifier.size(40.dp))
+        // Moto + bici en vez del camión genérico de antes — son los vehículos con los que
+        // realmente reparten los cadetes.
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(Icons.Filled.TwoWheeler, contentDescription = null, tint = Gray500, modifier = Modifier.size(40.dp))
+            Icon(Icons.Filled.PedalBike, contentDescription = null, tint = Gray500, modifier = Modifier.size(40.dp))
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             "No tenés ningún viaje asignado por ahora.",
@@ -321,7 +347,7 @@ private fun EstadoVacio() {
 }
 
 @Composable
-private fun ViajeResumenCard(viaje: PedidoDto, onVerDetalle: () -> Unit) {
+private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, onVerDetalle: () -> Unit) {
     val esPendiente = viaje.estado.id == EstadoPedido.PENDIENTE
     val color = if (esPendiente) Amber500 else Emerald600
     Card(
@@ -361,6 +387,10 @@ private fun ViajeResumenCard(viaje: PedidoDto, onVerDetalle: () -> Unit) {
                     "Tenés asignado el pedido #${viaje.numero}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                if (esPendiente) {
+                    Spacer(Modifier.height(4.dp))
+                    ContadorAceptacion(viaje.asignadoEn, tiempoLimiteAceptacionSeg)
+                }
                 if (!esPendiente) {
                     // Ya aceptado: si el cadete tiene varios en curso, necesita el
                     // origen/destino acá para distinguirlos sin entrar al detalle.
@@ -368,8 +398,15 @@ private fun ViajeResumenCard(viaje: PedidoDto, onVerDetalle: () -> Unit) {
                     Text("Hasta: ${viaje.destinoDireccion}", style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = onVerDetalle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (esPendiente) "Ver y responder" else "Ver viaje")
+                Button(
+                    onClick = onVerDetalle,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    colors = if (esPendiente) ButtonDefaults.buttonColors(containerColor = Amber500) else ButtonDefaults.buttonColors(),
+                ) {
+                    Text(
+                        if (esPendiente) "Ver y responder" else "Ver viaje",
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
                 }
             }
         }

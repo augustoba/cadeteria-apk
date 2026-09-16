@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
@@ -66,7 +68,13 @@ import com.cadeteria.cadete.ui.theme.TemaApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PerfilScreen(onIrDashboard: () -> Unit, onIrHistorial: () -> Unit, onCerrarSesion: () -> Unit) {
+fun PerfilScreen(
+    onIrDashboard: () -> Unit,
+    onIrHistorial: () -> Unit,
+    onCerrarSesion: () -> Unit,
+    onIrAvisos: () -> Unit,
+    onIrAyuda: () -> Unit,
+) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
     val vm: PerfilViewModel = viewModel(factory = ViewModelFactory(app) { PerfilViewModel(it) })
@@ -238,6 +246,24 @@ fun PerfilScreen(onIrDashboard: () -> Unit, onIrHistorial: () -> Unit, onCerrarS
                             onClick = { vm.cambiarTema(valor) },
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = opciones.size),
                         ) { Text(etiqueta) }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            SeccionCard(titulo = "Más", icono = Icons.Filled.HelpOutline) {
+                Column {
+                    OutlinedButton(onClick = onIrAvisos, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Campaign, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Avisos de la cadetería")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = onIrAyuda, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.HelpOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Ayuda")
                     }
                 }
             }

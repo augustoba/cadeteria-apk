@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import com.cadeteria.cadete.data.local.OnboardingStore
 import com.cadeteria.cadete.data.local.PendingActionsStore
 import com.cadeteria.cadete.data.local.SessionManager
 import com.cadeteria.cadete.data.remote.RetrofitProvider
@@ -55,6 +56,8 @@ class CadeteApp : Application() {
         private set
     lateinit var pendingActionsRepository: PendingActionsRepository
         private set
+    lateinit var onboardingStore: OnboardingStore
+        private set
 
     /** Popup de bienvenida con el saldo al entrar (solo cadetes PORCENTAJE) — se prende en el login y HomeViewModel lo consume una sola vez. */
     var mostrarBienvenidaAlEntrar = false
@@ -83,6 +86,13 @@ class CadeteApp : Application() {
     val abrirChat: SharedFlow<Unit> = _abrirChat.asSharedFlow()
     fun solicitarAbrirChat() { _abrirChat.tryEmit(Unit) }
 
+    /** Tocar la notificación de "Nuevo viaje" va directo al detalle de ese pedido — con el
+     * tiempo límite para aceptar corriendo, no tiene sentido hacer pasar al cadete por el
+     * Dashboard a buscar la tarjeta (auditoría UX 2026-09-15). */
+    private val _abrirViaje = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 1)
+    val abrirViaje: SharedFlow<String> = _abrirViaje.asSharedFlow()
+    fun solicitarAbrirViaje(pedidoId: String) { _abrirViaje.tryEmit(pedidoId) }
+
     /** Para el flush de "Finalizar" pendientes cuando vuelve la conexión — no está atado al ciclo de vida de ninguna pantalla. */
     private val appScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -99,6 +109,7 @@ class CadeteApp : Application() {
         pendingActionsRepository = PendingActionsRepository(
             PendingActionsStore(this), pedidoRepository, cadeteRepository, cloudinaryUploader,
         )
+        onboardingStore = OnboardingStore(this)
 
         NotificationHelper.crearCanales(this)
         configurarOsmdroid()
