@@ -65,6 +65,7 @@ import com.cadeteria.cadete.ui.theme.CademCharcoal
 import com.cadeteria.cadete.ui.theme.CademOrange
 import com.cadeteria.cadete.ui.theme.Gray500
 import com.cadeteria.cadete.ui.theme.TemaApp
+import com.cadeteria.cadete.util.optimizarImagen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -293,7 +294,7 @@ private fun PerfilHeaderCard(
     Card(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = CademCharcoal)) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = fotoUrl,
+                model = optimizarImagen(fotoUrl, 240),
                 contentDescription = "Foto de perfil",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

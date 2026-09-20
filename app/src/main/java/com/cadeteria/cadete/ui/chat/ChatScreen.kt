@@ -58,6 +58,7 @@ import com.cadeteria.cadete.data.remote.dto.MensajeDto
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.util.optimizarImagen
 import java.io.File
 import java.io.FileOutputStream
 
@@ -193,7 +194,7 @@ private fun BurbujaMensaje(mensaje: MensajeDto) {
                 val audioUrl = mensaje.audioUrl
                 if (imagenUrl != null) {
                     AsyncImage(
-                        model = imagenUrl,
+                        model = optimizarImagen(imagenUrl, 1200),
                         contentDescription = "Foto adjunta",
                         modifier = Modifier.widthIn(max = 240.dp),
                     )
