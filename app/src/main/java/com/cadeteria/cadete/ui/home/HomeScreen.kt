@@ -4,7 +4,14 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -270,13 +278,18 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .background(color.copy(alpha = 0.14f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, tint = color)
+                Box(contentAlignment = Alignment.Center) {
+                    if (estadoId == EstadoCadete.LIBRE) {
+                        PulsoLibre(color, Modifier.size(44.dp))
+                    }
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .background(color.copy(alpha = 0.14f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, tint = color)
+                    }
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {
@@ -321,6 +334,38 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
             }
         }
     }
+}
+
+/**
+ * Anillo que se expande y se desvanece en loop alrededor del icono de estado, solo cuando el
+ * cadete está LIBRE (auditoría visual 2026-09-20, del mockup del dueño). La idea es que se
+ * entienda de un vistazo que está activo y puede recibir viajes, sin tener que leer el texto.
+ *
+ * Se escala por `graphicsLayer` y no por tamaño: escalar no recompone el layout en cada frame,
+ * solo el dibujo — con el celular arriba de la moto eso importa.
+ */
+@Composable
+private fun PulsoLibre(color: Color, modifier: Modifier = Modifier) {
+    val transicion = rememberInfiniteTransition(label = "pulsoLibre")
+    val progreso by transicion.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2400, easing = CubicBezierEasing(0f, 0f, 0.2f, 1f)),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "progresoPulso",
+    )
+    Box(
+        modifier
+            .graphicsLayer {
+                val escala = 1f + 0.35f * progreso   // 1 → 1.35, como el keyframe del mockup
+                scaleX = escala
+                scaleY = escala
+                alpha = 0.8f * (1f - progreso)       // .8 → 0
+            }
+            .border(2.dp, color, CircleShape),
+    )
 }
 
 @Composable
