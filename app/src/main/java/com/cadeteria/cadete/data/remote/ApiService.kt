@@ -18,6 +18,13 @@ interface ApiService {
     @POST("api/auth/login/cadete")
     suspend fun login(@Body req: LoginRequest): TokenResponse
 
+    /** "Olvidé mi contraseña" — sin sesión. El backend responde 200 siempre, exista o no el usuario. */
+    @POST("api/auth/recuperar-password")
+    suspend fun recuperarPassword(@Body req: RecuperarPasswordRequest)
+
+    @POST("api/auth/recuperar-password/confirmar")
+    suspend fun confirmarRecuperarPassword(@Body req: ConfirmarRecuperarPasswordRequest)
+
     @GET("api/cadetes/me")
     suspend fun miPerfil(): CadeteDto
 

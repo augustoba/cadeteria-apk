@@ -53,7 +53,7 @@ import com.cadeteria.cadete.ui.theme.CademCharcoal
 import com.cadeteria.cadete.ui.theme.Gray500
 
 @Composable
-fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit) {
+fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPassword: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
     val vm: LoginViewModel = viewModel(factory = ViewModelFactory(app) { LoginViewModel(it) })
@@ -159,6 +159,9 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit) {
                     }
 
                     Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = onOlvidoPassword, modifier = Modifier.fillMaxWidth()) {
+                        Text("¿Olvidaste tu contraseña?")
+                    }
                     TextButton(onClick = onCambiarServidor, modifier = Modifier.fillMaxWidth()) {
                         Text("Cambiar servidor")
                     }

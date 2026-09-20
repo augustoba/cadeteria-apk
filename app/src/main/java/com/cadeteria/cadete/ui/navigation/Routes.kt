@@ -3,6 +3,7 @@ package com.cadeteria.cadete.ui.navigation
 object Routes {
     const val SERVIDOR = "servidor"
     const val LOGIN = "login"
+    const val RECUPERAR_PASSWORD = "recuperar_password"
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val VIAJE = "viaje/{pedidoId}"

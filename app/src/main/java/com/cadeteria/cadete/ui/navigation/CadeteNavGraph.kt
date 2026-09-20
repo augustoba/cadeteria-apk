@@ -29,6 +29,7 @@ import com.cadeteria.cadete.ui.home.HomeScreen
 import com.cadeteria.cadete.ui.login.LoginScreen
 import com.cadeteria.cadete.ui.onboarding.OnboardingScreen
 import com.cadeteria.cadete.ui.perfil.PerfilScreen
+import com.cadeteria.cadete.ui.recuperarpassword.RecuperarPasswordScreen
 import com.cadeteria.cadete.ui.servidor.ServerConfigScreen
 import com.cadeteria.cadete.ui.viaje.ViajeScreen
 import kotlinx.coroutines.launch
@@ -150,6 +151,17 @@ fun CadeteNavGraph() {
                     }
                 },
                 onCambiarServidor = { navController.navigate(Routes.SERVIDOR) },
+                onOlvidoPassword = { navController.navigate(Routes.RECUPERAR_PASSWORD) },
+            )
+        }
+        composable(Routes.RECUPERAR_PASSWORD) {
+            RecuperarPasswordScreen(
+                onListo = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onCancelar = { navController.popBackStack() },
             )
         }
         composable(Routes.ONBOARDING) {
