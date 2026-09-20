@@ -37,6 +37,12 @@ class ImagenesTest {
     }
 
     @Test
+    fun `deja igual una url firmada (insertar delante de la firma la romperia)`() {
+        val firmada = "https://res.cloudinary.com/demo/image/upload/s--abc123--/v1234567/foto.jpg"
+        assertEquals(firmada, optimizarImagen(firmada, 120))
+    }
+
+    @Test
     fun `devuelve null tal cual`() {
         assertNull(optimizarImagen(null, 120))
     }
