@@ -6,14 +6,23 @@ import android.graphics.Bitmap
 import android.media.MediaPlayer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,7 +56,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +69,9 @@ import com.cadeteria.cadete.data.remote.dto.MensajeDto
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.ui.theme.Gray100
+import com.cadeteria.cadete.ui.theme.Gray500
+import com.cadeteria.cadete.ui.theme.Red50
 import com.cadeteria.cadete.util.optimizarImagen
 import java.io.File
 import java.io.FileOutputStream
@@ -102,15 +116,36 @@ fun ChatScreen(onVolver: () -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (state.grabando) {
-                    Text(
-                        "🔴 Grabando…",
-                        modifier = Modifier.weight(1f).padding(start = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
+                    val alphaGrabando by rememberInfiniteTransition(label = "grabando").animateFloat(
+                        initialValue = 1f,
+                        targetValue = 0.25f,
+                        animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
+                        label = "grabando-alpha",
                     )
+                    Row(
+                        Modifier.weight(1f).padding(start = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .graphicsLayer { alpha = alphaGrabando }
+                                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(50)),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Grabando nota de voz…",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 } else {
                     OutlinedTextField(
                         value = texto,
@@ -118,15 +153,16 @@ fun ChatScreen(onVolver: () -> Unit) {
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Escribí un mensaje…") },
                         enabled = !state.enviando,
+                        shape = RoundedCornerShape(50),
                     )
                 }
                 if (texto.isBlank()) {
                     if (!state.grabando) {
-                        IconButton(onClick = { tomarFoto.launch(null) }, enabled = !state.enviando) {
-                            Icon(Icons.Filled.PhotoCamera, contentDescription = "Adjuntar foto")
+                        BotonCircular(onClick = { tomarFoto.launch(null) }, enabled = !state.enviando, fondo = Gray100) {
+                            Icon(Icons.Filled.PhotoCamera, contentDescription = "Adjuntar foto", tint = Gray500)
                         }
                     }
-                    IconButton(
+                    BotonCircular(
                         onClick = {
                             if (state.grabando) {
                                 vm.detenerYEnviarGrabacion()
@@ -137,19 +173,21 @@ fun ChatScreen(onVolver: () -> Unit) {
                             }
                         },
                         enabled = !state.enviando,
+                        fondo = if (state.grabando) Red50 else Gray100,
                     ) {
                         Icon(
                             if (state.grabando) Icons.Filled.Stop else Icons.Filled.Mic,
                             contentDescription = if (state.grabando) "Detener y enviar nota de voz" else "Grabar nota de voz",
-                            tint = if (state.grabando) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            tint = if (state.grabando) MaterialTheme.colorScheme.error else Gray500,
                         )
                     }
                 } else {
-                    IconButton(
+                    BotonCircular(
                         onClick = { vm.enviar(texto); texto = "" },
                         enabled = texto.isNotBlank() && !state.enviando,
+                        fondo = MaterialTheme.colorScheme.primary,
                     ) {
-                        Icon(Icons.Filled.Send, contentDescription = "Enviar")
+                        Icon(Icons.Filled.Send, contentDescription = "Enviar", tint = Color.White)
                     }
                 }
             }
@@ -159,7 +197,12 @@ fun ChatScreen(onVolver: () -> Unit) {
             CargandoFullScreen()
             return@Scaffold
         }
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(Gray100)
+                .padding(padding),
+        ) {
             state.error?.let {
                 BannerError(it, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp))
             }
@@ -176,16 +219,42 @@ fun ChatScreen(onVolver: () -> Unit) {
     }
 }
 
+/** Botón de ícono dentro de un círculo de color — mic/cámara/enviar de la barra de abajo. */
+@Composable
+private fun BotonCircular(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    fondo: Color,
+    contenido: @Composable () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(44.dp)
+            .background(fondo, RoundedCornerShape(50)),
+        contentAlignment = Alignment.Center,
+    ) {
+        IconButton(onClick = onClick, enabled = enabled) { contenido() }
+    }
+}
+
 @Composable
 private fun BurbujaMensaje(mensaje: MensajeDto) {
     val esMio = mensaje.autor == AutorMensaje.CADETE
+    // Esquina "pico" de 4dp del lado del que habla, en vez de las 4 esquinas parejas de antes
+    // — es la forma clásica de burbuja de chat, hace más fácil distinguir de un vistazo quién
+    // mandó cada mensaje en una conversación larga.
+    val forma = if (esMio) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp)
+    } else {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 16.dp)
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (esMio) Arrangement.End else Arrangement.Start) {
         Box(
             Modifier
                 .widthIn(max = 280.dp)
                 .background(
-                    if (esMio) MaterialTheme.colorScheme.primary else Color(0xFFE5E7EB),
-                    RoundedCornerShape(12.dp),
+                    if (esMio) MaterialTheme.colorScheme.primary else Color.White,
+                    forma,
                 )
                 .padding(10.dp),
         ) {
@@ -225,33 +294,58 @@ private fun ReproductorNotaDeVoz(url: String, esMio: Boolean) {
     }
 
     val color = if (esMio) Color.White else Color.Black
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = {
-            val actual = player
-            if (reproduciendo && actual != null) {
-                actual.pause()
-                reproduciendo = false
-            } else if (actual != null) {
-                actual.start()
-                reproduciendo = true
-            } else {
-                val nuevo = MediaPlayer()
-                runCatching {
-                    nuevo.setDataSource(url)
-                    nuevo.setOnCompletionListener { reproduciendo = false }
-                    nuevo.setOnPreparedListener { it.start() }
-                    nuevo.prepareAsync()
-                }.onFailure { nuevo.release() }
-                player = nuevo
-                reproduciendo = true
+    // Barras de altura fija a modo de "forma de onda" — es decoración, no la amplitud real
+    // del audio (igual que el resto de las apps de chat lo usan como señal visual de "esto es
+    // un audio", no como un dato).
+    val alturasBarras = remember { listOf(6, 14, 9, 17, 8, 12, 6) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.widthIn(min = 140.dp)) {
+        Box(
+            Modifier
+                .size(30.dp)
+                .background(color.copy(alpha = 0.18f), RoundedCornerShape(50)),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(
+                onClick = {
+                    val actual = player
+                    if (reproduciendo && actual != null) {
+                        actual.pause()
+                        reproduciendo = false
+                    } else if (actual != null) {
+                        actual.start()
+                        reproduciendo = true
+                    } else {
+                        val nuevo = MediaPlayer()
+                        runCatching {
+                            nuevo.setDataSource(url)
+                            nuevo.setOnCompletionListener { reproduciendo = false }
+                            nuevo.setOnPreparedListener { it.start() }
+                            nuevo.prepareAsync()
+                        }.onFailure { nuevo.release() }
+                        player = nuevo
+                        reproduciendo = true
+                    }
+                },
+                modifier = Modifier.size(30.dp),
+            ) {
+                Icon(
+                    if (reproduciendo) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (reproduciendo) "Pausar nota de voz" else "Reproducir nota de voz",
+                    tint = color,
+                    modifier = Modifier.size(16.dp),
+                )
             }
-        }) {
-            Icon(
-                if (reproduciendo) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (reproduciendo) "Pausar nota de voz" else "Reproducir nota de voz",
-                tint = color,
-            )
         }
-        Text("🎤 Nota de voz", color = color, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.width(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            alturasBarras.forEach { alturaDp ->
+                Box(
+                    Modifier
+                        .width(3.dp)
+                        .height(alturaDp.dp)
+                        .background(color.copy(alpha = 0.7f), RoundedCornerShape(2.dp)),
+                )
+            }
+        }
     }
 }

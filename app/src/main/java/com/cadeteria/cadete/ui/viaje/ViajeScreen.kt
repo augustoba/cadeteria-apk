@@ -4,6 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.OvalShape
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +71,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -433,9 +436,9 @@ private fun AccionesPendiente(
         return
     }
 
-    Column {
-        ContadorAceptacion(asignadoEn, tiempoLimiteSeg)
-        Spacer(Modifier.height(12.dp))
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        ContadorAceptacion(asignadoEn, tiempoLimiteSeg, grande = true)
+        Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
                 onClick = onAceptar,
@@ -719,9 +722,23 @@ private fun trazosABitmap(trazos: List<List<Offset>>, ancho: Int, alto: Int): Bi
     return bitmap
 }
 
+/** Pin circular de color plano para diferenciar origen/destino/cadete de un vistazo en el mapa. */
+private fun pinDrawable(color: Int, sizePx: Int = 36): ShapeDrawable =
+    ShapeDrawable(OvalShape()).apply {
+        paint.color = color
+        setBounds(0, 0, sizePx, sizePx)
+    }
+
 @Composable
 private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
     val context = LocalContext.current
+    // Mismos colores que ya usa la fila Origen/Destino de arriba (FilaInfo) — naranja de
+    // marca para retiro, rojo para entrega — más azul para la posición del cadete, para que
+    // los tres pins se distingan de un vistazo (antes el mapa solo marcaba destino y cadete,
+    // con el mismo pin por defecto sin color).
+    val colorOrigen = MaterialTheme.colorScheme.primary.toArgb()
+    val colorDestino = MaterialTheme.colorScheme.error.toArgb()
+    val colorCadete = MapsBlue.toArgb()
 
     AndroidView(
         modifier = Modifier
@@ -741,10 +758,18 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
         },
         update = { map ->
             map.overlays.clear()
+            val origen = GeoPoint(viaje.origenLat, viaje.origenLng)
             val destino = GeoPoint(viaje.destinoLat, viaje.destinoLng)
             map.overlays.add(Marker(map).apply {
+                position = origen
+                icon = pinDrawable(colorOrigen)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                title = "Origen"
+            })
+            map.overlays.add(Marker(map).apply {
                 position = destino
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                icon = pinDrawable(colorDestino)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "Destino"
             })
 
@@ -759,13 +784,15 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
                         if (loc != null) {
                             map.overlays.add(Marker(map).apply {
                                 position = GeoPoint(loc.latitude, loc.longitude)
+                                icon = pinDrawable(colorCadete)
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                                 title = "Vos"
                             })
                             map.invalidate()
                         }
                     }
             } catch (e: SecurityException) {
-                // Sin permiso de ubicación todavía — el mapa igual muestra el destino.
+                // Sin permiso de ubicación todavía — el mapa igual muestra origen y destino.
             }
             map.controller.setCenter(centro)
             map.invalidate()

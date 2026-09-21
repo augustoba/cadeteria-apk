@@ -1,16 +1,22 @@
 package com.cadeteria.cadete.ui.common
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cadeteria.cadete.ui.theme.CademOrange
@@ -123,8 +130,12 @@ fun formatearCuentaRegresiva(segundos: Int): String {
     return "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
 }
 
-/** Umbrales (segundos restantes) en los que se dispara una vibración corta de alerta, uno por vez. */
-private val UMBRALES_VIBRACION_SEG = setOf(30, 15, 5)
+/** Segundos restantes en los que se alerta (vibra + suena), una sola vez cada uno. */
+internal val UMBRALES_ALERTA_SEG = setOf(30, 15, 5)
+
+/** Si corresponde alertar en este segundo: está en un umbral y no se avisó todavía. */
+internal fun tocaAlertar(restante: Int, yaAvisados: Set<Int>): Boolean =
+    restante in UMBRALES_ALERTA_SEG && restante !in yaAvisados
 
 private fun vibrarAlerta(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= 31) {
@@ -142,6 +153,32 @@ private fun vibrarAlerta(context: Context) {
 }
 
 /**
+ * Suena además de vibrar: el cadete va arriba de la moto y la vibración del bolsillo no alcanza.
+ *
+ * Usa el stream de ALARMA a propósito (`USAGE_ALARM`): es el único que suena fuerte aunque el
+ * teléfono esté en silencio o con el volumen multimedia bajo. Mismo criterio que NotificationHelper,
+ * que por eso usa TYPE_RINGTONE en vez del chime corto de notificación.
+ *
+ * El tono se corta solo a los 2 segundos: un tono de llamada entero suena 30s, y si el cadete ya
+ * aceptó el viaje no tiene por qué seguir sonando.
+ */
+private fun sonarAlerta(context: Context) {
+    runCatching {
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val tono = RingtoneManager.getRingtone(
+            context,
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
+        )
+        tono?.audioAttributes = attrs
+        tono?.play()
+        Handler(Looper.getMainLooper()).postDelayed({ runCatching { tono?.stop() } }, 2_000)
+    }
+}
+
+/**
  * Cuenta regresiva para aceptar un viaje asignado (PENDIENTE) — se usa tanto en el detalle
  * del viaje como en la tarjeta de "Asignados y en curso" del Home, para que el cadete vea el
  * mismo tiempo restante esté donde esté (antes solo aparecía al abrir el detalle).
@@ -151,7 +188,12 @@ private fun vibrarAlerta(context: Context) {
  * mirando la calle no siempre está mirando fijo la pantalla (auditoría UX 2026-09-15).
  */
 @Composable
-fun ContadorAceptacion(asignadoEn: String?, tiempoLimiteSeg: Int, modifier: Modifier = Modifier) {
+fun ContadorAceptacion(
+    asignadoEn: String?,
+    tiempoLimiteSeg: Int,
+    modifier: Modifier = Modifier,
+    grande: Boolean = false,
+) {
     val context = LocalContext.current
     val inicioMs = remember(asignadoEn) { asignadoEn?.let(::parsearInstanteUtc) }
     var segundosRestantes by remember(asignadoEn) { mutableStateOf<Int?>(null) }
@@ -162,8 +204,10 @@ fun ContadorAceptacion(asignadoEn: String?, tiempoLimiteSeg: Int, modifier: Modi
             val transcurridoSeg = (System.currentTimeMillis() - inicioMs) / 1000
             val restante = (tiempoLimiteSeg - transcurridoSeg).toInt()
             segundosRestantes = restante
-            if (restante in UMBRALES_VIBRACION_SEG && umbralesYaVibrados.add(restante)) {
+            if (tocaAlertar(restante, umbralesYaVibrados)) {
+                umbralesYaVibrados.add(restante)
                 runCatching { vibrarAlerta(context) }
+                sonarAlerta(context)
             }
             if (restante <= 0) break
             delay(1000)
@@ -172,31 +216,71 @@ fun ContadorAceptacion(asignadoEn: String?, tiempoLimiteSeg: Int, modifier: Modi
     segundosRestantes?.let { restante ->
         val urgente = restante <= 15
         val colorAcento = if (urgente) Red600 else MaterialTheme.colorScheme.primary
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-            Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    progress = { if (tiempoLimiteSeg > 0) (restante.toFloat() / tiempoLimiteSeg).coerceIn(0f, 1f) else 0f },
-                    modifier = Modifier.size(56.dp),
-                    color = colorAcento,
-                    trackColor = colorAcento.copy(alpha = 0.15f),
-                    strokeWidth = 5.dp,
-                )
+        val mensaje = if (restante > 0) "Para responder — si se agota, se le ofrece a otro cadete"
+            else "⏱ Se agotó el tiempo — puede que ya se le ofrezca a otro cadete"
+
+        if (grande) {
+            // Anillo grande (200 px del mockup ≈ 180.dp) para la pantalla de oferta — se lee
+            // de un vistazo antes de decidir, a diferencia del anillo chico de la card del Home.
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+                Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        progress = { if (tiempoLimiteSeg > 0) (restante.toFloat() / tiempoLimiteSeg).coerceIn(0f, 1f) else 0f },
+                        modifier = Modifier.size(180.dp),
+                        color = colorAcento,
+                        trackColor = colorAcento.copy(alpha = 0.15f),
+                        strokeWidth = 10.dp,
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            restante.toString(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 46.sp,
+                            color = colorAcento,
+                        )
+                        Text(
+                            "SEGUNDOS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorAcento.copy(alpha = 0.7f),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    formatearCuentaRegresiva(restante),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    mensaje,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (urgente) FontWeight.Bold else FontWeight.Normal,
                     color = colorAcento,
+                    textAlign = TextAlign.Center,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                if (restante > 0) "Para responder — si se agota, se le ofrece a otro cadete" else "⏱ Se agotó el tiempo — puede que ya se le ofrezca a otro cadete",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (urgente) FontWeight.Bold else FontWeight.Normal,
-                color = colorAcento,
-                modifier = Modifier.weight(1f),
-            )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        progress = { if (tiempoLimiteSeg > 0) (restante.toFloat() / tiempoLimiteSeg).coerceIn(0f, 1f) else 0f },
+                        modifier = Modifier.size(56.dp),
+                        color = colorAcento,
+                        trackColor = colorAcento.copy(alpha = 0.15f),
+                        strokeWidth = 5.dp,
+                    )
+                    Text(
+                        formatearCuentaRegresiva(restante),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = colorAcento,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    mensaje,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (urgente) FontWeight.Bold else FontWeight.Normal,
+                    color = colorAcento,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

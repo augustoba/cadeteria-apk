@@ -46,7 +46,7 @@ import com.cadeteria.cadete.ui.theme.Gray500
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AyudaScreen(onVolver: () -> Unit) {
+fun AyudaScreen(onVolver: () -> Unit, onVerTutorial: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
     var telefono by remember { mutableStateOf<String?>(null) }
@@ -82,6 +82,10 @@ fun AyudaScreen(onVolver: () -> Unit) {
                         color = Gray500,
                     )
                 }
+            }
+
+            OutlinedButton(onClick = onVerTutorial, modifier = Modifier.fillMaxWidth()) {
+                Text("📖 Ver el tutorial de bienvenida de nuevo")
             }
 
             if (cargando) {

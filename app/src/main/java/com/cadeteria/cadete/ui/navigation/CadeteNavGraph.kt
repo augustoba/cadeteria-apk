@@ -216,7 +216,10 @@ fun CadeteNavGraph() {
             AvisosScreen(onVolver = { navController.popBackStack() })
         }
         composable(Routes.AYUDA) {
-            AyudaScreen(onVolver = { navController.popBackStack() })
+            AyudaScreen(
+                onVolver = { navController.popBackStack() },
+                onVerTutorial = { navController.navigate(Routes.ONBOARDING) },
+            )
         }
     }
 }
