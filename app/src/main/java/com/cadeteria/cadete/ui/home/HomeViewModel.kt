@@ -230,11 +230,22 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 // Con la app abierta este evento llega por WebSocket, no por FCM (ver
                 // CadeteFirebaseMessagingService) — sin este aviso, un viaje nuevo entraba
                 // en silencio y se podía pasar el tiempo límite para aceptarlo sin notarlo.
-                if (evento.tipo == EventoViaje.VIAJE_ASIGNADO) {
-                    NotificationHelper.mostrar(
+                // Mismo problema con QUITADO/CANCELADO (mejora 2026-09-23, pedida por el
+                // dueño): antes solo se recargaba la lista y el pedido desaparecía de la
+                // pantalla sin ningún aviso — el cadete nunca se enteraba de qué había pasado.
+                when (evento.tipo) {
+                    EventoViaje.VIAJE_ASIGNADO -> NotificationHelper.mostrar(
                         app, NotificationHelper.CANAL_VIAJES, evento.pedido.id.hashCode(),
                         "Nuevo viaje", "Tenés asignado el pedido #${evento.pedido.numero}.",
                         destino = NotificationHelper.DESTINO_VIAJE, pedidoId = evento.pedido.id,
+                    )
+                    EventoViaje.VIAJE_QUITADO -> NotificationHelper.mostrar(
+                        app, NotificationHelper.CANAL_VIAJES, evento.pedido.id.hashCode(),
+                        "Viaje quitado", "Se te quitó el pedido #${evento.pedido.numero}.",
+                    )
+                    EventoViaje.VIAJE_CANCELADO -> NotificationHelper.mostrar(
+                        app, NotificationHelper.CANAL_VIAJES, evento.pedido.id.hashCode(),
+                        "Viaje cancelado", "Se canceló el pedido #${evento.pedido.numero}.",
                     )
                 }
             }
