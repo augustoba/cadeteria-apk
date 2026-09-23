@@ -22,6 +22,8 @@ data class CadeteDto(
     val fotoVehiculoUrl: String?,
     val fotoCarnetUrl: String?,
     val fotoTarjetaVerdeUrl: String?,
+    val fotoTarjetaVerdeDorsoUrl: String?,
+    val vehiculoAnio: Int?,
     val username: String,
     val activo: Boolean,
     val estado: LookupDto,
@@ -91,3 +93,36 @@ object EstadoCadete {
     const val OCUPADO = "OCUPADO"
     const val DESCONECTADO = "DESCONECTADO"
 }
+
+/** Espeja CadeteActualizacionDtos.ActualizacionCadeteRequest (POST /api/cadetes/me/actualizaciones). */
+data class ActualizacionCadeteRequestDto(
+    val fotoUrl: String? = null,
+    val fotoVehiculoUrl: String? = null,
+    val fotoTarjetaVerdeUrl: String? = null,
+    val fotoTarjetaVerdeDorsoUrl: String? = null,
+    val vehiculoMarca: String? = null,
+    val vehiculoModelo: String? = null,
+    val vehiculoColor: String? = null,
+    val vehiculoPatente: String? = null,
+    val vehiculoAnio: Int? = null,
+)
+
+/** Espeja CadeteActualizacionDtos.CampoResponse. */
+data class CadeteActualizacionCampoDto(
+    val id: String,
+    val campo: String,
+    val valorAnterior: String?,
+    val valorPropuesto: String,
+    val estado: String,
+    val motivoRechazo: String?,
+    val resueltoEn: String?,
+    val resueltoPorUsername: String?,
+)
+
+/** Espeja CadeteActualizacionDtos.ActualizacionResponse (GET/POST /api/cadetes/me/actualizaciones). */
+data class CadeteActualizacionDto(
+    val id: String,
+    val creadoEn: String,
+    val estado: String,
+    val campos: List<CadeteActualizacionCampoDto>,
+)

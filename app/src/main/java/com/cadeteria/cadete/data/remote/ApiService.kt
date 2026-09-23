@@ -65,6 +65,12 @@ interface ApiService {
     @PATCH("api/cadetes/me/cuenta")
     suspend fun actualizarCuenta(@Body req: CuentaRequest): CadeteDto
 
+    @POST("api/cadetes/me/actualizaciones")
+    suspend fun crearActualizacion(@Body req: ActualizacionCadeteRequestDto): CadeteActualizacionDto
+
+    @GET("api/cadetes/me/actualizaciones")
+    suspend fun misActualizaciones(): List<CadeteActualizacionDto>
+
     @GET("api/pedidos/me/activo")
     suspend fun viajeActivo(): retrofit2.Response<PedidoDto>
 

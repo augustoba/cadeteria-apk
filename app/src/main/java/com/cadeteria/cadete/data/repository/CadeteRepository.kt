@@ -1,6 +1,8 @@
 package com.cadeteria.cadete.data.repository
 
 import com.cadeteria.cadete.data.remote.RetrofitProvider
+import com.cadeteria.cadete.data.remote.dto.ActualizacionCadeteRequestDto
+import com.cadeteria.cadete.data.remote.dto.CadeteActualizacionDto
 import com.cadeteria.cadete.data.remote.dto.CadeteConfigDto
 import com.cadeteria.cadete.data.remote.dto.CadeteDto
 import com.cadeteria.cadete.data.remote.dto.CambiarPasswordRequest
@@ -35,6 +37,12 @@ class CadeteRepository(private val retrofitProvider: RetrofitProvider) {
 
     suspend fun actualizarCuenta(cbu: String?, aliasCbu: String?): Result<CadeteDto> =
         runCatching { retrofitProvider.apiService().actualizarCuenta(CuentaRequest(cbu, aliasCbu)) }
+
+    suspend fun crearActualizacion(req: ActualizacionCadeteRequestDto): Result<CadeteActualizacionDto> =
+        runCatching { retrofitProvider.apiService().crearActualizacion(req) }
+
+    suspend fun misActualizaciones(): Result<List<CadeteActualizacionDto>> =
+        runCatching { retrofitProvider.apiService().misActualizaciones() }
 
     suspend fun miPagoSemanal(): Result<MiSemanaDto> = runCatching { retrofitProvider.apiService().miPagoSemanal() }
 
