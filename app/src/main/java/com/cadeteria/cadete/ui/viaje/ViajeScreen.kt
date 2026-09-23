@@ -4,11 +4,15 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -498,8 +502,9 @@ private fun AccionesEnCurso(
 ) {
     val context = LocalContext.current
     var fotoRetiro by remember { mutableStateOf<Bitmap?>(null) }
-    val tomarFotoRetiro = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        fotoRetiro = bitmap
+    var archivoFotoRetiro by remember { mutableStateOf<File?>(null) }
+    val tomarFotoRetiro = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        if (exito) archivoFotoRetiro?.let { fotoRetiro = decodificarFotoCorregida(it) }
     }
 
     if (enviando) {
@@ -521,14 +526,18 @@ private fun AccionesEnCurso(
                 Spacer(Modifier.height(8.dp))
             }
             OutlinedButton(
-                onClick = { tomarFotoRetiro.launch(null) },
+                onClick = {
+                    val (archivo, uri) = crearArchivoFotoTemporal(context)
+                    archivoFotoRetiro = archivo
+                    tomarFotoRetiro.launch(uri)
+                },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
             ) {
                 Text(if (fotoRetiro == null) "Sacar foto del retiro (opcional)" else "Sacar otra foto")
             }
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick = { onMarcarRetirado(fotoRetiro?.let { guardarBitmapTemporal(context, it) }) },
+                onClick = { onMarcarRetirado(archivoFotoRetiro) },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("📦 Marcar como retirado", fontWeight = FontWeight.SemiBold) }
             Spacer(Modifier.height(16.dp))
@@ -602,8 +611,9 @@ private fun FinalizarDialog(
     val context = LocalContext.current
     var receptor by remember { mutableStateOf("") }
     var foto by remember { mutableStateOf<Bitmap?>(null) }
-    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        foto = bitmap
+    var archivoFoto by remember { mutableStateOf<File?>(null) }
+    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        if (exito) archivoFoto?.let { foto = decodificarFotoCorregida(it) }
     }
     val trazosFirma = remember { mutableStateListOf<List<Offset>>() }
     var tamanoFirma by remember { mutableStateOf(IntSize.Zero) }
@@ -628,7 +638,14 @@ private fun FinalizarDialog(
                     Image(it.asImageBitmap(), contentDescription = null, modifier = Modifier.height(120.dp))
                     Spacer(Modifier.height(8.dp))
                 }
-                OutlinedButton(onClick = { tomarFoto.launch(null) }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = {
+                        val (archivo, uri) = crearArchivoFotoTemporal(context)
+                        archivoFoto = archivo
+                        tomarFoto.launch(uri)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(if (foto == null) "Sacar foto de la entrega / domicilio" else "Sacar otra foto")
                 }
                 Spacer(Modifier.height(16.dp))
@@ -653,7 +670,6 @@ private fun FinalizarDialog(
             Button(
                 enabled = !enviando && receptor.isNotBlank() && foto != null && (!firmaObligatoria || hayFirma),
                 onClick = {
-                    val archivoFoto = foto?.let { guardarBitmapTemporal(context, it) }
                     val archivoFirma = if (hayFirma) {
                         trazosABitmap(trazosFirma, tamanoFirma.width, tamanoFirma.height)
                             ?.let { guardarBitmapTemporal(context, it) }
@@ -867,4 +883,50 @@ private fun guardarBitmapTemporal(context: android.content.Context, bitmap: Bitm
     val archivo = File(context.cacheDir, "foto_${System.currentTimeMillis()}.jpg")
     FileOutputStream(archivo).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
     return archivo
+}
+
+/**
+ * Archivo + Uri para que la cámara (`ActivityResultContracts.TakePicture()`) escriba la foto
+ * completa ahí, en vez del thumbnail de baja resolución de `TakePicturePreview()` — ese
+ * contrato viejo no aplicaba la orientación real del sensor, así que una foto sacada en
+ * vertical quedaba acostada (bug reportado 2026-09-23).
+ */
+private fun crearArchivoFotoTemporal(context: Context): Pair<File, Uri> {
+    val archivo = File(context.cacheDir, "foto_${System.currentTimeMillis()}.jpg")
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
+    return archivo to uri
+}
+
+/**
+ * La cámara guarda el archivo con la orientación real del sensor marcada en el tag EXIF, sin
+ * rotar los píxeles — hay que leer ese tag y rotar la imagen de verdad antes de mostrarla o
+ * subirla, si no cualquier visor que no respete EXIF (o el que la reprocesa, como Cloudinary
+ * en algunos casos) la muestra girada.
+ */
+private fun corregirRotacionExif(archivo: File) {
+    val grados = try {
+        when (ExifInterface(archivo.absolutePath).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+        )) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0
+        }
+    } catch (e: Exception) {
+        0
+    }
+    if (grados == 0) return
+    val original = BitmapFactory.decodeFile(archivo.absolutePath) ?: return
+    val matriz = Matrix().apply { postRotate(grados.toFloat()) }
+    val rotado = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matriz, true)
+    FileOutputStream(archivo).use { out -> rotado.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+    original.recycle()
+    rotado.recycle()
+}
+
+/** Bitmap ya corregido, para la vista previa en pantalla — el archivo en disco es lo que se sube. */
+private fun decodificarFotoCorregida(archivo: File): Bitmap? {
+    corregirRotacionExif(archivo)
+    return BitmapFactory.decodeFile(archivo.absolutePath)
 }

@@ -34,6 +34,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Para que la cámara (TakePicture()) escriba la foto completa a un archivo propio en
+             vez del thumbnail de baja resolución de TakePicturePreview(), que no respeta la
+             orientación real del sensor y salía acostada en fotos tomadas en vertical. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <service
             android:name=".location.LocationTrackingService"
             android:exported="false"
