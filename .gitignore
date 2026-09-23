@@ -28,3 +28,4 @@ app/*.keystore
 # Wrapper de Gradle: el .jar no se versiona a mano en este repo (ver README —
 # "Primer build"), pero sí las properties/scripts si se regeneran.
 gradle/wrapper/gradle-wrapper.jar
+.worktrees/
