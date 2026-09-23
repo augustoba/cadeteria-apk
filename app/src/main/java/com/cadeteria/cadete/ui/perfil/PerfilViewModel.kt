@@ -160,9 +160,9 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
     }
 
     /** Último estado (pendiente/rechazado) de un campo puntual, para el chip debajo de cada uno. */
-    fun ultimoEstadoDe(campo: String): CadeteActualizacionCampoDto? =
-        _misActualizaciones.value.firstOrNull()?.campos?.firstOrNull { it.campo == campo }
+    fun ultimoEstadoDe(lista: List<CadeteActualizacionDto>, campo: String): CadeteActualizacionCampoDto? =
+        lista.firstOrNull()?.campos?.firstOrNull { it.campo == campo }
 
-    fun hayAlgoPendiente(): Boolean =
-        _misActualizaciones.value.firstOrNull()?.campos?.any { it.estado == "PENDIENTE" } ?: false
+    fun hayAlgoPendiente(lista: List<CadeteActualizacionDto>): Boolean =
+        lista.firstOrNull()?.campos?.any { it.estado == "PENDIENTE" } ?: false
 }

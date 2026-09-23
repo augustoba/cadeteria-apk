@@ -91,6 +91,7 @@ fun PerfilScreen(
     val miSemana by vm.miSemana.collectAsState()
     val config by vm.config.collectAsState()
     val state by vm.uiState.collectAsState()
+    val misActualizaciones by vm.misActualizaciones.collectAsState()
 
     var passwordActual by remember { mutableStateOf("") }
     var passwordNueva by remember { mutableStateOf("") }
@@ -265,11 +266,14 @@ fun PerfilScreen(
                     )
                     Spacer(Modifier.height(10.dp))
 
+                    val nadaEnCurso = !state.guardandoActualizacion && !vm.hayAlgoPendiente(misActualizaciones)
+
                     CampoFotoActualizable(
                         etiqueta = "Foto de perfil",
                         fotoActualUrl = c.fotoUrl,
-                        estadoPendiente = vm.ultimoEstadoDe("FOTO_PERFIL"),
+                        estadoPendiente = vm.ultimoEstadoDe(misActualizaciones, "FOTO_PERFIL"),
                         subiendo = state.subiendoFoto == "FOTO_PERFIL",
+                        enabled = nadaEnCurso,
                         onFotoElegida = { vm.proponerFoto("FOTO_PERFIL", it) },
                     )
 
@@ -277,44 +281,52 @@ fun PerfilScreen(
                         CampoFotoActualizable(
                             etiqueta = "Foto del vehículo",
                             fotoActualUrl = c.fotoVehiculoUrl,
-                            estadoPendiente = vm.ultimoEstadoDe("FOTO_VEHICULO"),
+                            estadoPendiente = vm.ultimoEstadoDe(misActualizaciones, "FOTO_VEHICULO"),
                             subiendo = state.subiendoFoto == "FOTO_VEHICULO",
+                            enabled = nadaEnCurso,
                             onFotoElegida = { vm.proponerFoto("FOTO_VEHICULO", it) },
                         )
                         CampoFotoActualizable(
                             etiqueta = "Tarjeta verde — frente",
                             fotoActualUrl = c.fotoTarjetaVerdeUrl,
-                            estadoPendiente = vm.ultimoEstadoDe("FOTO_TARJETA_VERDE"),
+                            estadoPendiente = vm.ultimoEstadoDe(misActualizaciones, "FOTO_TARJETA_VERDE"),
                             subiendo = state.subiendoFoto == "FOTO_TARJETA_VERDE",
+                            enabled = nadaEnCurso,
                             onFotoElegida = { vm.proponerFoto("FOTO_TARJETA_VERDE", it) },
                         )
                         CampoFotoActualizable(
                             etiqueta = "Tarjeta verde — dorso",
                             fotoActualUrl = c.fotoTarjetaVerdeDorsoUrl,
-                            estadoPendiente = vm.ultimoEstadoDe("FOTO_TARJETA_VERDE_DORSO"),
+                            estadoPendiente = vm.ultimoEstadoDe(misActualizaciones, "FOTO_TARJETA_VERDE_DORSO"),
                             subiendo = state.subiendoFoto == "FOTO_TARJETA_VERDE_DORSO",
+                            enabled = nadaEnCurso,
                             onFotoElegida = { vm.proponerFoto("FOTO_TARJETA_VERDE_DORSO", it) },
                         )
 
                         Spacer(Modifier.height(10.dp))
                         OutlinedTextField(value = vehiculoMarca, onValueChange = { vehiculoMarca = it }, label = { Text("Marca") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        EstadoCampoChip(vm.ultimoEstadoDe(misActualizaciones, "VEHICULO_MARCA"))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = vehiculoModelo, onValueChange = { vehiculoModelo = it }, label = { Text("Modelo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        EstadoCampoChip(vm.ultimoEstadoDe(misActualizaciones, "VEHICULO_MODELO"))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = vehiculoColorNuevo, onValueChange = { vehiculoColorNuevo = it }, label = { Text("Color") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        EstadoCampoChip(vm.ultimoEstadoDe(misActualizaciones, "VEHICULO_COLOR"))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = vehiculoPatenteNuevo, onValueChange = { vehiculoPatenteNuevo = it }, label = { Text("Patente") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        EstadoCampoChip(vm.ultimoEstadoDe(misActualizaciones, "VEHICULO_PATENTE"))
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(value = vehiculoAnioNuevo, onValueChange = { vehiculoAnioNuevo = it }, label = { Text("Año") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        EstadoCampoChip(vm.ultimoEstadoDe(misActualizaciones, "VEHICULO_ANIO"))
                         Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = { vm.proponerDatosVehiculo(vehiculoMarca, vehiculoModelo, vehiculoColorNuevo, vehiculoPatenteNuevo, vehiculoAnioNuevo) },
-                            enabled = !state.guardandoActualizacion && !vm.hayAlgoPendiente(),
+                            enabled = nadaEnCurso,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(if (state.guardandoActualizacion) "Enviando…" else "Enviar datos del vehículo para revisión") }
                     }
 
-                    if (vm.hayAlgoPendiente()) {
+                    if (vm.hayAlgoPendiente(misActualizaciones)) {
                         Spacer(Modifier.height(6.dp))
                         Text(
                             "Ya tenés una actualización esperando revisión — esperá a que se resuelva antes de mandar otra.",
@@ -497,6 +509,7 @@ private fun CampoFotoActualizable(
     fotoActualUrl: String?,
     estadoPendiente: CadeteActualizacionCampoDto?,
     subiendo: Boolean,
+    enabled: Boolean,
     onFotoElegida: (File) -> Unit,
 ) {
     val context = LocalContext.current
@@ -525,26 +538,33 @@ private fun CampoFotoActualizable(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(etiqueta, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                estadoPendiente?.let {
-                    when (it.estado) {
-                        "PENDIENTE" -> Text("⏳ Pendiente de revisión", style = MaterialTheme.typography.bodySmall, color = Amber500)
-                        "RECHAZADO" -> Text(
-                            "❌ Rechazado${it.motivoRechazo?.let { m -> ": $m" } ?: ""}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        else -> {}
-                    }
-                }
+                EstadoCampoChip(estadoPendiente)
             }
             OutlinedButton(
-                enabled = !subiendo,
+                enabled = enabled && !subiendo,
                 onClick = {
+                    if (!enabled) return@OutlinedButton
                     val (archivo, uri) = crearArchivoFotoTemporal(context)
                     archivoTemp = archivo
                     launcher.launch(uri)
                 },
             ) { Text(if (subiendo) "Subiendo…" else "Cambiar") }
+        }
+    }
+}
+
+/** Chip de estado ("pendiente"/"rechazado") debajo de un campo editable, compartido por fotos y texto. */
+@Composable
+private fun EstadoCampoChip(estado: CadeteActualizacionCampoDto?) {
+    estado?.let {
+        when (it.estado) {
+            "PENDIENTE" -> Text("⏳ Pendiente de revisión", style = MaterialTheme.typography.bodySmall, color = Amber500)
+            "RECHAZADO" -> Text(
+                "❌ Rechazado${it.motivoRechazo?.let { m -> ": $m" } ?: ""}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            else -> {}
         }
     }
 }
