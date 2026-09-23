@@ -1,6 +1,9 @@
 package com.cadeteria.cadete.ui.perfil
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -54,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.cadeteria.cadete.CadeteApp
+import com.cadeteria.cadete.data.remote.dto.CadeteActualizacionCampoDto
 import com.cadeteria.cadete.data.remote.dto.CadeteConfigDto
 import com.cadeteria.cadete.ui.common.AppScaffold
 import com.cadeteria.cadete.ui.common.BannerError
@@ -65,7 +70,10 @@ import com.cadeteria.cadete.ui.theme.CademCharcoal
 import com.cadeteria.cadete.ui.theme.CademOrange
 import com.cadeteria.cadete.ui.theme.Gray500
 import com.cadeteria.cadete.ui.theme.TemaApp
+import com.cadeteria.cadete.util.corregirRotacionExif
+import com.cadeteria.cadete.util.crearArchivoFotoTemporal
 import com.cadeteria.cadete.util.optimizarImagen
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,12 +97,22 @@ fun PerfilScreen(
     var telefono by remember { mutableStateOf("") }
     var cbu by remember { mutableStateOf("") }
     var aliasCbu by remember { mutableStateOf("") }
+    var vehiculoMarca by remember { mutableStateOf("") }
+    var vehiculoModelo by remember { mutableStateOf("") }
+    var vehiculoColorNuevo by remember { mutableStateOf("") }
+    var vehiculoPatenteNuevo by remember { mutableStateOf("") }
+    var vehiculoAnioNuevo by remember { mutableStateOf("") }
 
     LaunchedEffect(cadete?.id) {
         cadete?.let {
             telefono = it.telefono
             cbu = it.cbu ?: ""
             aliasCbu = it.aliasCbu ?: ""
+            vehiculoMarca = it.vehiculoMarca ?: ""
+            vehiculoModelo = it.vehiculoModelo ?: ""
+            vehiculoColorNuevo = it.vehiculoColor ?: ""
+            vehiculoPatenteNuevo = it.vehiculoPatente ?: ""
+            vehiculoAnioNuevo = it.vehiculoAnio?.toString() ?: ""
         }
     }
 
@@ -233,6 +251,78 @@ fun PerfilScreen(
                     enabled = !state.guardandoCuenta,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(if (state.guardandoCuenta) "Guardando…" else "Guardar datos de cobro") }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            cadete?.let { c ->
+                val esMoto = c.tipoVehiculo.id == "MOTO"
+                SeccionCard(titulo = "Actualizar mis datos", icono = Icons.Filled.DirectionsBike) {
+                    Text(
+                        "Los cambios quedan pendientes de revisión del admin antes de aplicarse.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Gray500,
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    CampoFotoActualizable(
+                        etiqueta = "Foto de perfil",
+                        fotoActualUrl = c.fotoUrl,
+                        estadoPendiente = vm.ultimoEstadoDe("FOTO_PERFIL"),
+                        subiendo = state.subiendoFoto == "FOTO_PERFIL",
+                        onFotoElegida = { vm.proponerFoto("FOTO_PERFIL", it) },
+                    )
+
+                    if (esMoto) {
+                        CampoFotoActualizable(
+                            etiqueta = "Foto del vehículo",
+                            fotoActualUrl = c.fotoVehiculoUrl,
+                            estadoPendiente = vm.ultimoEstadoDe("FOTO_VEHICULO"),
+                            subiendo = state.subiendoFoto == "FOTO_VEHICULO",
+                            onFotoElegida = { vm.proponerFoto("FOTO_VEHICULO", it) },
+                        )
+                        CampoFotoActualizable(
+                            etiqueta = "Tarjeta verde — frente",
+                            fotoActualUrl = c.fotoTarjetaVerdeUrl,
+                            estadoPendiente = vm.ultimoEstadoDe("FOTO_TARJETA_VERDE"),
+                            subiendo = state.subiendoFoto == "FOTO_TARJETA_VERDE",
+                            onFotoElegida = { vm.proponerFoto("FOTO_TARJETA_VERDE", it) },
+                        )
+                        CampoFotoActualizable(
+                            etiqueta = "Tarjeta verde — dorso",
+                            fotoActualUrl = c.fotoTarjetaVerdeDorsoUrl,
+                            estadoPendiente = vm.ultimoEstadoDe("FOTO_TARJETA_VERDE_DORSO"),
+                            subiendo = state.subiendoFoto == "FOTO_TARJETA_VERDE_DORSO",
+                            onFotoElegida = { vm.proponerFoto("FOTO_TARJETA_VERDE_DORSO", it) },
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(value = vehiculoMarca, onValueChange = { vehiculoMarca = it }, label = { Text("Marca") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(value = vehiculoModelo, onValueChange = { vehiculoModelo = it }, label = { Text("Modelo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(value = vehiculoColorNuevo, onValueChange = { vehiculoColorNuevo = it }, label = { Text("Color") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(value = vehiculoPatenteNuevo, onValueChange = { vehiculoPatenteNuevo = it }, label = { Text("Patente") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(value = vehiculoAnioNuevo, onValueChange = { vehiculoAnioNuevo = it }, label = { Text("Año") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = { vm.proponerDatosVehiculo(vehiculoMarca, vehiculoModelo, vehiculoColorNuevo, vehiculoPatenteNuevo, vehiculoAnioNuevo) },
+                            enabled = !state.guardandoActualizacion && !vm.hayAlgoPendiente(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (state.guardandoActualizacion) "Enviando…" else "Enviar datos del vehículo para revisión") }
+                    }
+
+                    if (vm.hayAlgoPendiente()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Ya tenés una actualización esperando revisión — esperá a que se resuelva antes de mandar otra.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Gray500,
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -398,5 +488,63 @@ private fun DatoPerfil(etiqueta: String, valor: String) {
     Column(Modifier.padding(vertical = 4.dp)) {
         Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = Gray500)
         Text(valor, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun CampoFotoActualizable(
+    etiqueta: String,
+    fotoActualUrl: String?,
+    estadoPendiente: CadeteActualizacionCampoDto?,
+    subiendo: Boolean,
+    onFotoElegida: (File) -> Unit,
+) {
+    val context = LocalContext.current
+    var archivoTemp by remember { mutableStateOf<File?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        if (exito) {
+            archivoTemp?.let {
+                corregirRotacionExif(it)
+                onFotoElegida(it)
+            }
+        }
+    }
+
+    Column(Modifier.padding(vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (fotoActualUrl != null) {
+                AsyncImage(
+                    model = optimizarImagen(fotoActualUrl, 160),
+                    contentDescription = etiqueta,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                Box(Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(etiqueta, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                estadoPendiente?.let {
+                    when (it.estado) {
+                        "PENDIENTE" -> Text("⏳ Pendiente de revisión", style = MaterialTheme.typography.bodySmall, color = Amber500)
+                        "RECHAZADO" -> Text(
+                            "❌ Rechazado${it.motivoRechazo?.let { m -> ": $m" } ?: ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        else -> {}
+                    }
+                }
+            }
+            OutlinedButton(
+                enabled = !subiendo,
+                onClick = {
+                    val (archivo, uri) = crearArchivoFotoTemporal(context)
+                    archivoTemp = archivo
+                    launcher.launch(uri)
+                },
+            ) { Text(if (subiendo) "Subiendo…" else "Cambiar") }
+        }
     }
 }
