@@ -161,7 +161,20 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
     var mostrarReporte by remember { mutableStateOf(false) }
     var mostrarNoEntregado by remember { mutableStateOf(false) }
 
-    Scaffold(
+    val viajePendiente = state.viaje?.takeIf {
+        !state.cargando && !state.finalizarEncolado && it.estado.id == EstadoPedido.PENDIENTE
+    }
+    if (viajePendiente != null) {
+        // Oferta como pantalla completa (spec mejoras visuales §3): sin mapa ni barra superior.
+        OfertaPantalla(
+            viaje = viajePendiente,
+            tiempoLimiteSeg = state.tiempoLimiteAceptacionSeg,
+            enviando = state.enviando,
+            error = state.error,
+            onAceptar = vm::aceptar,
+            onRechazar = { mostrarRechazar = true },
+        )
+    } else Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Tu viaje") },
@@ -169,25 +182,6 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                     IconButton(onClick = onVolver) { Icon(Icons.Filled.ArrowBack, contentDescription = "Volver") }
                 },
             )
-        },
-        bottomBar = {
-            // Pegado abajo y siempre visible, sin scrollear — con el reloj corriendo para
-            // aceptar, no puede depender de que el cadete baje hasta el final de la pantalla
-            // (auditoría UX 2026-09-15: antes quedaba debajo del mapa y la tarjeta de datos).
-            val viaje = state.viaje
-            if (viaje != null && !state.cargando && !state.finalizarEncolado && viaje.estado.id == EstadoPedido.PENDIENTE) {
-                Surface(tonalElevation = 3.dp, shadowElevation = 12.dp) {
-                    Column(Modifier.padding(16.dp)) {
-                        AccionesPendiente(
-                            enviando = state.enviando,
-                            asignadoEn = viaje.asignadoEn,
-                            tiempoLimiteSeg = state.tiempoLimiteAceptacionSeg,
-                            onAceptar = vm::aceptar,
-                            onRechazar = { mostrarRechazar = true },
-                        )
-                    }
-                }
-            }
         },
     ) { padding ->
         val viaje = state.viaje
@@ -462,38 +456,6 @@ private fun NoEntregadoDialog(enviando: Boolean, onDismiss: () -> Unit, onConfir
             OutlinedButton(onClick = onDismiss, enabled = !enviando) { Text("Volver") }
         },
     )
-}
-
-@Composable
-private fun AccionesPendiente(
-    enviando: Boolean,
-    asignadoEn: String?,
-    tiempoLimiteSeg: Int,
-    onAceptar: () -> Unit,
-    onRechazar: () -> Unit,
-) {
-    if (enviando) {
-        CircularProgressIndicator()
-        return
-    }
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        ContadorAceptacion(asignadoEn, tiempoLimiteSeg, grande = true)
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = onAceptar,
-                modifier = Modifier.weight(1f).height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
-            ) { Text("✅ Aceptar", fontWeight = FontWeight.SemiBold) }
-            OutlinedButton(
-                onClick = onRechazar,
-                modifier = Modifier.weight(1f).height(52.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-            ) { Text("Rechazar") }
-        }
-    }
 }
 
 @Composable

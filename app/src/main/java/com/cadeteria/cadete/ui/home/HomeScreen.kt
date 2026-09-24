@@ -77,6 +77,7 @@ import com.cadeteria.cadete.ui.common.AvisoFlotante
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
+import com.cadeteria.cadete.ui.common.RutaRetiroEntrega
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.navigation.Routes
 import com.cadeteria.cadete.ui.theme.Amber500
@@ -499,7 +500,7 @@ private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, o
                 ContadorAceptacion(viaje.asignadoEn, tiempoLimiteAceptacionSeg)
             }
             Spacer(Modifier.height(12.dp))
-            RutaResumen(viaje.origenDireccion, viaje.destinoDireccion)
+            RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
             Spacer(Modifier.height(14.dp))
             Button(
                 onClick = onVerDetalle,
@@ -548,37 +549,5 @@ private fun PillEstado(texto: String, color: Color, parpadea: Boolean) {
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             color = color,
         )
-    }
-}
-
-/** Retiro (punto naranja) → entrega (punto verde), unidos por una línea vertical. */
-@Composable
-private fun RutaResumen(origen: String, destino: String) {
-    val naranja = MaterialTheme.colorScheme.primary
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        Column(
-            Modifier.width(14.dp).fillMaxHeight().padding(vertical = 5.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(Modifier.size(10.dp).background(naranja, CircleShape))
-            Box(
-                Modifier
-                    .width(2.dp)
-                    .weight(1f)
-                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
-            )
-            Box(Modifier.size(10.dp).background(Emerald600, CircleShape))
-        }
-        Spacer(Modifier.width(10.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Column {
-                Text("Retiro", style = MaterialTheme.typography.labelSmall, color = Gray500)
-                Text(origen, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-            }
-            Column {
-                Text("Entrega", style = MaterialTheme.typography.labelSmall, color = Gray500)
-                Text(destino, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-            }
-        }
     }
 }
