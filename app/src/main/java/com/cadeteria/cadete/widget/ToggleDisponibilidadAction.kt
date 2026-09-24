@@ -59,6 +59,7 @@ class ToggleDisponibilidadAction : ActionCallback {
                 } else {
                     LocationServiceController.iniciar(context)
                 }
+                app.recordatorioEstado.actualizar(actualizado.estado.id)
                 guardarMensaje(context, glanceId, null, actualizado.estado.id, actualizado.nombre)
             }
             .onFailure {

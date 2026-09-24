@@ -152,7 +152,10 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     .sortedByDescending { it.estado.id == EstadoPedido.PENDIENTE },
                 error = if (perfil.isFailure) "No se pudo cargar tu perfil." else null,
             )
-            perfil.getOrNull()?.let { CadeteWidget.sincronizarEstado(app, it.estado.id, it.nombre) }
+            perfil.getOrNull()?.let {
+                CadeteWidget.sincronizarEstado(app, it.estado.id, it.nombre)
+                app.recordatorioEstado.actualizar(it.estado.id)
+            }
             cargarEstadisticasDeHoy()
         }
     }
@@ -230,6 +233,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     _uiState.value = _uiState.value.copy(cadete = actualizado, cambiandoEstado = false)
                     if (nuevoEstado == EstadoCadete.DESCONECTADO) onLocationServiceStop() else onLocationServiceStart()
                     CadeteWidget.sincronizarEstado(app, actualizado.estado.id, actualizado.nombre)
+                    app.recordatorioEstado.actualizar(actualizado.estado.id)
                 }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(

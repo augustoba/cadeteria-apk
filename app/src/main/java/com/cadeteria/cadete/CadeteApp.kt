@@ -57,6 +57,9 @@ class CadeteApp : Application() {
     lateinit var pendingActionsRepository: PendingActionsRepository
         private set
     lateinit var onboardingStore: OnboardingStore
+
+    /** Aviso cada 30 min en DESCONECTADO/OCUPADO (spec mejoras visuales §5). */
+    lateinit var recordatorioEstado: com.cadeteria.cadete.push.RecordatorioEstado
         private set
 
     /** Popup de bienvenida con el saldo al entrar (solo cadetes PORCENTAJE) — se prende en el login y HomeViewModel lo consume una sola vez. */
@@ -110,6 +113,7 @@ class CadeteApp : Application() {
             PendingActionsStore(this), pedidoRepository, cadeteRepository, cloudinaryUploader,
         )
         onboardingStore = OnboardingStore(this)
+        recordatorioEstado = com.cadeteria.cadete.push.RecordatorioEstado(this, appScope)
 
         NotificationHelper.crearCanales(this)
         configurarOsmdroid()

@@ -32,6 +32,8 @@ object NotificationHelper {
     const val CANAL_VIAJES = "viajes_v2"
     const val CANAL_CHAT = "chat_v2"
     const val CANAL_UBICACION = "ubicacion"
+    /** Recordatorio cada 30 min en DESCONECTADO/OCUPADO — sonido normal, no el ringtone de los viajes. */
+    const val CANAL_RECORDATORIOS = "recordatorios"
 
     private val PATRON_VIBRACION = longArrayOf(0, 500, 250, 500, 250, 500)
 
@@ -63,7 +65,12 @@ object NotificationHelper {
 
         manager.createNotificationChannel(viajes)
         manager.createNotificationChannel(chat)
+        val recordatorios = NotificationChannel(
+            CANAL_RECORDATORIOS, "Recordatorios de estado", NotificationManager.IMPORTANCE_DEFAULT,
+        )
+
         manager.createNotificationChannel(ubicacion)
+        manager.createNotificationChannel(recordatorios)
     }
 
     const val EXTRA_DESTINO = "destino"
