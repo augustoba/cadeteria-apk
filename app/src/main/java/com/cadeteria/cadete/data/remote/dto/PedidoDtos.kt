@@ -21,7 +21,17 @@ data class PedidoDto(
     val destinoLng: Double,
     val precio: Double,
     val montoDeclarado: Double?,
+    /** Transporta objetos de valor (no dinero) — declarado por el cliente. */
+    val llevaValores: Boolean = false,
+    /**
+     * Detalle, piso/depto y observaciones de cada dirección: el backend los manda en null
+     * mientras la oferta no está aceptada (mejora 2026-09-24) — aparecen al aceptar.
+     */
     val detalle: String?,
+    val origenPisoDepto: String? = null,
+    val origenObservaciones: String? = null,
+    val destinoPisoDepto: String? = null,
+    val destinoObservaciones: String? = null,
     val requiereMoto: Boolean,
     val estado: LookupDto,
     val cadeteAsignado: CadeteResumenDto?,

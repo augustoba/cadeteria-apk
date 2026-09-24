@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
@@ -240,14 +241,25 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    FilaInfo(Icons.Filled.TripOrigin, "Origen", viaje.origenDireccion, MaterialTheme.colorScheme.primary)
-                    FilaInfo(Icons.Filled.LocationOn, "Destino", viaje.destinoDireccion, MaterialTheme.colorScheme.error)
+                    FilaInfo(
+                        Icons.Filled.TripOrigin, "Origen",
+                        direccionCompleta(viaje.origenDireccion, viaje.origenPisoDepto, viaje.origenObservaciones),
+                        MaterialTheme.colorScheme.primary,
+                    )
+                    FilaInfo(
+                        Icons.Filled.LocationOn, "Destino",
+                        direccionCompleta(viaje.destinoDireccion, viaje.destinoPisoDepto, viaje.destinoObservaciones),
+                        MaterialTheme.colorScheme.error,
+                    )
                     FilaInfo(Icons.Filled.Payments, "Precio", "$${viaje.precio}", Emerald600)
                     if (viaje.montoDeclarado != null && viaje.montoDeclarado > 0) {
                         FilaInfo(Icons.Filled.Payments, "Va con dinero", "$${viaje.montoDeclarado}", Amber500)
                     }
+                    if (viaje.llevaValores) {
+                        FilaInfo(Icons.Filled.Diamond, "Transporta valores", "Objetos de valor declarados por el cliente", Amber500)
+                    }
                     if (!viaje.detalle.isNullOrBlank()) {
-                        FilaInfo(Icons.Filled.StickyNote2, "Detalle", viaje.detalle, Gray500)
+                        FilaInfo(Icons.Filled.StickyNote2, "Detalle del pedido", viaje.detalle, Gray500)
                     }
                 }
             }
@@ -814,6 +826,17 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
         },
     )
 }
+
+/**
+ * Dirección + piso/depto + observaciones en un solo texto. Los dos extras llegan en null hasta
+ * que el cadete acepta el viaje (el backend los oculta), así que antes se ve solo la dirección.
+ */
+private fun direccionCompleta(direccion: String, pisoDepto: String?, observaciones: String?): String =
+    buildString {
+        append(direccion)
+        if (!pisoDepto.isNullOrBlank()) append(" — Piso/depto: ").append(pisoDepto)
+        if (!observaciones.isNullOrBlank()) append("\n📝 ").append(observaciones)
+    }
 
 /** Fila del cartel de datos del viaje: ícono coloreado + etiqueta chica + valor. */
 @Composable
