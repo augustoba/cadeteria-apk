@@ -82,6 +82,14 @@ interface ApiService {
     @GET("api/pedidos/me/historial")
     suspend fun historial(@Query("desde") desde: String?, @Query("hasta") hasta: String?): HistorialDto
 
+    /** Solo los números del rango (lista vacía) — para las estadísticas de Inicio. */
+    @GET("api/pedidos/me/historial?soloResumen=true")
+    suspend fun resumenHistorial(@Query("desde") desde: String, @Query("hasta") hasta: String): HistorialDto
+
+    /** Minutos conectado hoy — la estadística "Conectado" de Inicio. */
+    @GET("api/cadetes/me/conectado-hoy")
+    suspend fun conectadoHoy(): ConectadoHoyDto
+
     @GET("api/pedidos/me/{id}")
     suspend fun detallePedido(@Path("id") id: String): PedidoDto
 

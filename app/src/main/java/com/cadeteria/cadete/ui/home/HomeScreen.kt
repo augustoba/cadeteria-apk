@@ -4,7 +4,11 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -29,15 +33,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TwoWheeler
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -55,13 +54,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.data.remote.dto.EstadoCadete
@@ -77,6 +81,7 @@ import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.navigation.Routes
 import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.Emerald600
+import com.cadeteria.cadete.ui.theme.EstiloNumero
 import com.cadeteria.cadete.ui.theme.Gray500
 import com.cadeteria.cadete.ui.theme.Red600
 
@@ -94,6 +99,7 @@ fun HomeScreen(
     onIrHistorial: () -> Unit,
     onIrPerfil: () -> Unit,
     onCerrarSesion: () -> Unit,
+    onIrAyuda: () -> Unit,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
@@ -162,22 +168,16 @@ fun HomeScreen(
     }
 
     AppScaffold(
-        title = "Dashboard",
+        title = "Inicio",
         currentRoute = Routes.HOME,
         cadeteNombre = state.cadete?.nombre,
         onIrDashboard = {},
         onIrHistorial = onIrHistorial,
         onIrPerfil = onIrPerfil,
         onCerrarSesion = onCerrarSesion,
+        onIrChat = onAbrirChat,
+        onIrAyuda = onIrAyuda,
         actions = {
-            val chatNoLeidos by app.chatNoLeidos.collectAsState()
-            IconButton(onClick = onAbrirChat) {
-                BadgedBox(badge = {
-                    if (chatNoLeidos > 0) Badge { Text(if (chatNoLeidos > 9) "9+" else "$chatNoLeidos") }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat")
-                }
-            }
             IconButton(onClick = vm::cargar) { Icon(Icons.Filled.Refresh, contentDescription = "Actualizar") }
         },
     ) { padding ->
@@ -228,6 +228,13 @@ fun HomeScreen(
                     },
                 )
 
+                Spacer(Modifier.height(12.dp))
+                EstadisticasDeHoy(
+                    viajes = state.viajesHoy,
+                    facturado = state.facturadoHoy,
+                    minutosConectado = state.minutosConectadoHoy,
+                )
+
                 Spacer(Modifier.height(24.dp))
                 Text(
                     "Asignados y en curso",
@@ -240,12 +247,16 @@ fun HomeScreen(
                     EstadoVacio()
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        for (viaje in state.activos) {
-                            ViajeResumenCard(
-                                viaje,
-                                tiempoLimiteAceptacionSeg = state.tiempoLimiteAceptacionSeg,
-                                onVerDetalle = { onAbrirViaje(viaje.id) },
-                            )
+                        state.activos.forEachIndexed { indice, viaje ->
+                            key(viaje.id) {
+                                EntradaAnimada(retrasoMs = indice * 60) {
+                                    ViajeResumenCard(
+                                        viaje,
+                                        tiempoLimiteAceptacionSeg = state.tiempoLimiteAceptacionSeg,
+                                        onVerDetalle = { onAbrirViaje(viaje.id) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -274,6 +285,7 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
     Card(
         Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = fondoDeEstado(estadoId, color)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -337,6 +349,72 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
 }
 
 /**
+ * Fondo de la card de estado (spec mejoras visuales §2, cambio 1): verde / ámbar / rojo suave
+ * según el estado, para que se entienda de un vistazo sin leer. En modo oscuro los pasteles
+ * del mockup encandilan: se usa el mismo color del estado, muy transparente, sobre la superficie.
+ */
+@Composable
+private fun fondoDeEstado(estadoId: String, color: Color): Color {
+    val superficie = MaterialTheme.colorScheme.surface
+    if (superficie.luminance() < 0.5f) return color.copy(alpha = 0.14f).compositeOver(superficie)
+    return when (estadoId) {
+        EstadoCadete.LIBRE -> Color(0xFFECFDF5)
+        EstadoCadete.OCUPADO -> Color(0xFFFFFBEB)
+        else -> Color(0xFFFEF2F2)
+    }
+}
+
+/**
+ * Viajes hoy / Facturado / Conectado (spec mejoras visuales §2, cambio 3). Los números en
+ * Space Grotesk para que se lean como datos. "—" mientras no cargó (o si falló: es un extra).
+ */
+@Composable
+private fun EstadisticasDeHoy(viajes: Int?, facturado: Double?, minutosConectado: Long?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Estadistica("Viajes hoy", viajes?.toString() ?: "—", Modifier.weight(1f))
+        Estadistica("Facturado", facturado?.let { formatearPesos(it) } ?: "—", Modifier.weight(1f))
+        Estadistica("Conectado", minutosConectado?.let { formatearDuracion(it) } ?: "—", Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Estadistica(etiqueta: String, valor: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier,
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(valor, style = EstiloNumero.copy(fontSize = 20.sp), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = Gray500)
+        }
+    }
+}
+
+/** "$3.600" — punto de miles como en Argentina, sin decimales. */
+private fun formatearPesos(monto: Double): String =
+    "$" + java.text.NumberFormat.getIntegerInstance(java.util.Locale("es", "AR")).format(monto.toLong())
+
+/** 95 -> "1h 35m", 40 -> "40m". */
+private fun formatearDuracion(minutos: Long): String =
+    if (minutos < 60) "${minutos}m" else "${minutos / 60}h ${minutos % 60}m"
+
+/**
+ * Entrada de las cards (spec mejoras visuales §2, cambio 7): fade + desplazamiento corto, una
+ * sola vez al aparecer. `retrasoMs` escalona varias cards seguidas.
+ */
+@Composable
+private fun EntradaAnimada(retrasoMs: Int = 0, content: @Composable () -> Unit) {
+    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = visible,
+        enter = fadeIn(tween(280, delayMillis = retrasoMs)) +
+            slideInVertically(tween(280, delayMillis = retrasoMs)) { alto -> alto / 6 },
+    ) { content() }
+}
+
+/**
  * Anillo que se expande y se desvanece en loop alrededor del icono de estado, solo cuando el
  * cadete está LIBRE (auditoría visual 2026-09-20, del mockup del dueño). La idea es que se
  * entienda de un vistazo que está activo y puede recibir viajes, sin tener que leer el texto.
@@ -391,6 +469,11 @@ private fun EstadoVacio() {
     }
 }
 
+/**
+ * Card de un viaje asignado o en curso (spec mejoras visuales §2, cambio 4): pill de estado
+ * (con punto que parpadea si está en curso) y la ruta como dos puntos unidos por una línea —
+ * naranja = retiro, verde = entrega — en vez de la barra lateral de color de antes.
+ */
 @Composable
 private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, onVerDetalle: () -> Unit) {
     val esPendiente = viaje.estado.id == EstadoPedido.PENDIENTE
@@ -398,61 +481,103 @@ private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, o
     Card(
         Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Row(
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PillEstado(
+                    texto = if (esPendiente) "¡Viaje nuevo! Respondé pronto" else "En curso",
+                    color = color,
+                    parpadea = !esPendiente,
+                )
+                Spacer(Modifier.weight(1f))
+                Text("#${viaje.numero}", style = EstiloNumero.copy(fontSize = 15.sp), color = Gray500)
+            }
+            if (esPendiente) {
+                Spacer(Modifier.height(8.dp))
+                ContadorAceptacion(viaje.asignadoEn, tiempoLimiteAceptacionSeg)
+            }
+            Spacer(Modifier.height(12.dp))
+            RutaResumen(viaje.origenDireccion, viaje.destinoDireccion)
+            Spacer(Modifier.height(14.dp))
+            Button(
+                onClick = onVerDetalle,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = if (esPendiente) ButtonDefaults.buttonColors(containerColor = Amber500) else ButtonDefaults.buttonColors(),
+            ) {
+                Text(
+                    if (esPendiente) "Ver y responder" else "Ver viaje",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PillEstado(texto: String, color: Color, parpadea: Boolean) {
+    val alphaPunto = if (parpadea) {
+        val transicion = rememberInfiniteTransition(label = "puntoEnCurso")
+        val a by transicion.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.25f,
+            animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+            label = "alphaPunto",
+        )
+        a
+    } else {
+        1f
+    }
+    Row(
+        Modifier
+            .background(color.copy(alpha = 0.12f), CircleShape)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
             Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .size(8.dp)
+                .graphicsLayer { alpha = alphaPunto }
+                .background(color, CircleShape),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            texto,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = color,
+        )
+    }
+}
+
+/** Retiro (punto naranja) → entrega (punto verde), unidos por una línea vertical. */
+@Composable
+private fun RutaResumen(origen: String, destino: String) {
+    val naranja = MaterialTheme.colorScheme.primary
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Column(
+            Modifier.width(14.dp).fillMaxHeight().padding(vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Box(Modifier.size(10.dp).background(naranja, CircleShape))
             Box(
                 Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(color),
+                    .width(2.dp)
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
             )
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (esPendiente) Icons.Filled.NotificationsActive else Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        if (esPendiente) "¡Viaje nuevo! Respondé pronto" else "Viaje en curso",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = color,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Tenés asignado el pedido #${viaje.numero}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                if (esPendiente) {
-                    Spacer(Modifier.height(4.dp))
-                    ContadorAceptacion(viaje.asignadoEn, tiempoLimiteAceptacionSeg)
-                }
-                if (!esPendiente) {
-                    // Ya aceptado: si el cadete tiene varios en curso, necesita el
-                    // origen/destino acá para distinguirlos sin entrar al detalle.
-                    Text("Desde: ${viaje.origenDireccion}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Hasta: ${viaje.destinoDireccion}", style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onVerDetalle,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = if (esPendiente) ButtonDefaults.buttonColors(containerColor = Amber500) else ButtonDefaults.buttonColors(),
-                ) {
-                    Text(
-                        if (esPendiente) "Ver y responder" else "Ver viaje",
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                    )
-                }
+            Box(Modifier.size(10.dp).background(Emerald600, CircleShape))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column {
+                Text("Retiro", style = MaterialTheme.typography.labelSmall, color = Gray500)
+                Text(origen, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+            }
+            Column {
+                Text("Entrega", style = MaterialTheme.typography.labelSmall, color = Gray500)
+                Text(destino, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
             }
         }
     }

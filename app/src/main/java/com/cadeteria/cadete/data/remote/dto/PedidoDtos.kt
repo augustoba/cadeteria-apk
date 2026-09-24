@@ -100,6 +100,9 @@ data class HistorialDto(
     val cantidadNoAceptados: Long,
 )
 
+/** Espeja CadeteController.ConectadoHoyResponse. */
+data class ConectadoHoyDto(val minutos: Long)
+
 /** Cuerpo de los mensajes que llegan por /queue/cadete/{id}/viajes (WebSocketPublisher.EventoViaje). */
 data class EventoViajeDto(
     val tipo: String,

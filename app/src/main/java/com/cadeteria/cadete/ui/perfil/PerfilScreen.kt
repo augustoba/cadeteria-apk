@@ -83,6 +83,7 @@ fun PerfilScreen(
     onCerrarSesion: () -> Unit,
     onIrAvisos: () -> Unit,
     onIrAyuda: () -> Unit,
+    onIrChat: () -> Unit,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
@@ -125,6 +126,8 @@ fun PerfilScreen(
         onIrHistorial = onIrHistorial,
         onIrPerfil = {},
         onCerrarSesion = onCerrarSesion,
+        onIrChat = onIrChat,
+        onIrAyuda = onIrAyuda,
     ) { padding ->
         Column(
             Modifier

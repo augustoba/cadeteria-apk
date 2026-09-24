@@ -30,6 +30,13 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
     suspend fun historial(desde: String? = null, hasta: String? = null): Result<HistorialDto> =
         runCatching { retrofitProvider.apiService().historial(desde, hasta) }
 
+    /** Viajes y facturado de un día (yyyy-MM-dd), sin la lista — estadísticas de Inicio. */
+    suspend fun resumenDelDia(dia: String): Result<HistorialDto> =
+        runCatching { retrofitProvider.apiService().resumenHistorial(dia, dia) }
+
+    suspend fun minutosConectadoHoy(): Result<Long> =
+        runCatching { retrofitProvider.apiService().conectadoHoy().minutos }
+
     suspend fun detalle(id: String): Result<PedidoDto> =
         runCatching { retrofitProvider.apiService().detallePedido(id) }
 

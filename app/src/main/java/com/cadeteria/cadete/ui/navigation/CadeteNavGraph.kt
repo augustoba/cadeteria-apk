@@ -183,6 +183,7 @@ fun CadeteNavGraph() {
                 onIrHistorial = { irA(Routes.HISTORIAL) },
                 onIrPerfil = { irA(Routes.PERFIL) },
                 onCerrarSesion = ::cerrarSesion,
+                onIrAyuda = { navController.navigate(Routes.AYUDA) },
             )
         }
         composable(
@@ -198,6 +199,8 @@ fun CadeteNavGraph() {
                 onIrDashboard = { irA(Routes.HOME) },
                 onIrPerfil = { irA(Routes.PERFIL) },
                 onCerrarSesion = ::cerrarSesion,
+                onIrChat = { navController.navigate(Routes.CHAT) },
+                onIrAyuda = { navController.navigate(Routes.AYUDA) },
             )
         }
         composable(Routes.CHAT) {
@@ -210,6 +213,7 @@ fun CadeteNavGraph() {
                 onCerrarSesion = ::cerrarSesion,
                 onIrAvisos = { navController.navigate(Routes.AVISOS) },
                 onIrAyuda = { navController.navigate(Routes.AYUDA) },
+                onIrChat = { navController.navigate(Routes.CHAT) },
             )
         }
         composable(Routes.AVISOS) {

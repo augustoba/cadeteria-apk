@@ -60,7 +60,14 @@ private const val TAMANO_PAGINA = 20
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistorialScreen(onAbrirViaje: (String) -> Unit, onIrDashboard: () -> Unit, onIrPerfil: () -> Unit, onCerrarSesion: () -> Unit) {
+fun HistorialScreen(
+    onAbrirViaje: (String) -> Unit,
+    onIrDashboard: () -> Unit,
+    onIrPerfil: () -> Unit,
+    onCerrarSesion: () -> Unit,
+    onIrChat: () -> Unit,
+    onIrAyuda: () -> Unit,
+) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
     val vm: HistorialViewModel = viewModel(factory = ViewModelFactory(app) { HistorialViewModel(it) })
@@ -75,6 +82,8 @@ fun HistorialScreen(onAbrirViaje: (String) -> Unit, onIrDashboard: () -> Unit, o
         onIrHistorial = {},
         onIrPerfil = onIrPerfil,
         onCerrarSesion = onCerrarSesion,
+        onIrChat = onIrChat,
+        onIrAyuda = onIrAyuda,
         actions = {
             IconButton(onClick = vm::cargar) { Icon(Icons.Filled.Refresh, contentDescription = "Actualizar") }
         },

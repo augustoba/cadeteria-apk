@@ -36,6 +36,10 @@ data class HomeUiState(
     val checklistDocumentacionObligatorio: Boolean = false,
     /** Si no está vacía, se muestra el diálogo de "te falta cargar esto antes de activarte". */
     val documentacionFaltante: List<String> = emptyList(),
+    /** Estadísticas de Inicio (spec mejoras visuales §2) — null mientras no cargaron o si fallaron. */
+    val viajesHoy: Int? = null,
+    val facturadoHoy: Double? = null,
+    val minutosConectadoHoy: Long? = null,
 )
 
 data class BienvenidaInfo(val nombre: String, val saldo: Double, val saldoBajo: Boolean)
@@ -149,7 +153,22 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 error = if (perfil.isFailure) "No se pudo cargar tu perfil." else null,
             )
             perfil.getOrNull()?.let { CadeteWidget.sincronizarEstado(app, it.estado.id, it.nombre) }
+            cargarEstadisticasDeHoy()
         }
+    }
+
+    /** Viajes hoy / Facturado / Conectado. Si falla no muestra error: son un extra, no bloquean nada. */
+    private suspend fun cargarEstadisticasDeHoy() {
+        val hoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("America/Argentina/Buenos_Aires")
+        }.format(java.util.Date())
+        val resumen = app.pedidoRepository.resumenDelDia(hoy).getOrNull()
+        val minutos = app.pedidoRepository.minutosConectadoHoy().getOrNull()
+        _uiState.value = _uiState.value.copy(
+            viajesHoy = resumen?.cantidadViajes,
+            facturadoHoy = resumen?.montoTotal,
+            minutosConectadoHoy = minutos,
+        )
     }
 
     /**
