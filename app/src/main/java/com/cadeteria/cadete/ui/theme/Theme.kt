@@ -73,5 +73,5 @@ fun CadeteAppTheme(
         TemaApp.SISTEMA -> isSystemInDarkTheme()
     }
     val colors = if (darkTheme) DarkColors else LightColors
-    MaterialTheme(colorScheme = colors, typography = MaterialTheme.typography, shapes = CadeteShapes, content = content)
+    MaterialTheme(colorScheme = colors, typography = CadeteTypography, shapes = CadeteShapes, content = content)
 }
