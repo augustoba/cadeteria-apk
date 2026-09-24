@@ -184,15 +184,18 @@ solo en runtime (campo `null` o ausente).
 
 ## Primer build 
 
-Este proyecto **no incluye el `.jar` del wrapper de Gradle** (es un binario — no tiene
-sentido versionarlo escrito a mano). Al abrir la carpeta `cadete-app/` en Android
-Studio, va a ofrecer regenerarlo solo ("Gradle Sync" lo resuelve). Si preferís la
-terminal y tenés Gradle instalado en el sistema:
+Los scripts del wrapper (`gradlew`, `gradlew.bat`, `gradle-wrapper.properties`) están
+versionados; el `.jar` (`gradle/wrapper/gradle-wrapper.jar`) no, pero una vez que está en disco
+**`./gradlew` funciona tal cual** — no hay que regenerar nada en cada clon que ya lo tenga. Lo
+único que necesita es saber dónde está el SDK de Android: `ANDROID_HOME` o `sdk.dir` en
+`local.properties` (Android Studio lo crea solo).
 
 ```
-cd cadete-app
-gradle wrapper --gradle-version 8.7
+./gradlew assembleDebug
 ```
+
+Solo en un clon nuevo sin el `.jar`: abrir el proyecto en Android Studio ("Gradle Sync" lo
+regenera) o, con Gradle instalado, `gradle wrapper --gradle-version 8.7`.
 
 Después:
 
@@ -244,7 +247,7 @@ para instalar un APK "encima" de uno ya instalado).
 
 ## Qué falta probar (checklist para quien tenga Android Studio a mano)
 
-- [ ] Compila y sincroniza sin errores tras `gradle wrapper` / apertura en Studio.
+- [x] Compila con `./gradlew assembleDebug`.
 - [ ] Login contra un backend real (ver "Primer build" para la URL correcta según
       emulador vs. dispositivo físico).
 - [ ] Toggle Libre/Desconectado dispara el foreground service (aparece la
