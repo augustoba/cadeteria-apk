@@ -241,12 +241,12 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     FilaInfo(
                         Icons.Filled.TripOrigin, "Origen",
-                        direccionCompleta(viaje.origenDireccion, viaje.origenPisoDepto, viaje.origenObservaciones),
+                        direccionCompleta(viaje.origenDireccion, viaje.origenPiso, viaje.origenDepto, viaje.origenObservaciones),
                         MaterialTheme.colorScheme.primary,
                     )
                     FilaInfo(
                         Icons.Filled.LocationOn, "Destino",
-                        direccionCompleta(viaje.destinoDireccion, viaje.destinoPisoDepto, viaje.destinoObservaciones),
+                        direccionCompleta(viaje.destinoDireccion, viaje.destinoPiso, viaje.destinoDepto, viaje.destinoObservaciones),
                         MaterialTheme.colorScheme.error,
                     )
                     FilaInfo(Icons.Filled.Payments, "Precio", formatearPesos(viaje.precio), Emerald600)
@@ -894,13 +894,14 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
 }
 
 /**
- * Dirección + piso/depto + observaciones en un solo texto. Los dos extras llegan en null hasta
+ * Dirección + piso + depto + observaciones en un solo texto. Los dos extras llegan en null hasta
  * que el cadete acepta el viaje (el backend los oculta), así que antes se ve solo la dirección.
  */
-private fun direccionCompleta(direccion: String, pisoDepto: String?, observaciones: String?): String =
+private fun direccionCompleta(direccion: String, piso: String?, depto: String?, observaciones: String?): String =
     buildString {
         append(direccion)
-        if (!pisoDepto.isNullOrBlank()) append(" — Piso/depto: ").append(pisoDepto)
+        if (!piso.isNullOrBlank()) append(" — Piso ").append(piso)
+        if (!depto.isNullOrBlank()) append(" — Depto ").append(depto)
         if (!observaciones.isNullOrBlank()) append("\n📝 ").append(observaciones)
     }
 
