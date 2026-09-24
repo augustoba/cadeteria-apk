@@ -2,6 +2,7 @@ package com.cadeteria.cadete.ui.viaje
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,10 +32,10 @@ import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.RutaRetiroEntrega
+import com.cadeteria.cadete.ui.common.formatearPesos
 import com.cadeteria.cadete.ui.theme.Emerald600
 import com.cadeteria.cadete.ui.theme.EstiloNumero
 import com.cadeteria.cadete.ui.theme.Gray500
-import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -129,7 +130,8 @@ fun OfertaPantalla(
                         modifier = Modifier.weight(0.3f).height(60.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                    ) { Text("Rechazar") }
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                    ) { Text("Rechazar", maxLines = 1, softWrap = false) }
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -161,8 +163,6 @@ private fun DatoOferta(etiqueta: String, valor: String, nota: String?, modifier:
     }
 }
 
-private fun formatearPesos(monto: Double): String =
-    "$" + NumberFormat.getIntegerInstance(Locale("es", "AR")).format(monto.toLong())
 
 private fun formatearKm(km: Double): String = String.format(Locale("es", "AR"), "%.1f km", km)
 

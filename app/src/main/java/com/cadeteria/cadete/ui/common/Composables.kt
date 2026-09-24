@@ -216,8 +216,11 @@ fun ContadorAceptacion(
     segundosRestantes?.let { restante ->
         val urgente = restante <= 15
         val colorAcento = if (urgente) Red600 else MaterialTheme.colorScheme.primary
-        val mensaje = if (restante > 0) "Para responder — si se agota, se le ofrece a otro cadete"
-            else "⏱ Se agotó el tiempo — puede que ya se le ofrezca a otro cadete"
+        val mensaje = when {
+            restante <= 0 -> "⏱ Se agotó el tiempo — puede que ya se le ofrezca a otro cadete"
+            grande -> "para responder" // la pantalla de oferta ya explica abajo qué pasa si se agota
+            else -> "Para responder — si se agota, se le ofrece a otro cadete"
+        }
 
         if (grande) {
             // Anillo grande (200 px del mockup ≈ 180.dp) para la pantalla de oferta — se lee
@@ -234,7 +237,7 @@ fun ContadorAceptacion(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             restante.toString(),
-                            fontWeight = FontWeight.Bold,
+                            style = com.cadeteria.cadete.ui.theme.EstiloNumero,
                             fontSize = 46.sp,
                             color = colorAcento,
                         )
@@ -284,3 +287,7 @@ fun ContadorAceptacion(
         }
     }
 }
+
+/** "$3.600" — punto de miles como en Argentina, sin decimales (montos de viajes). */
+fun formatearPesos(monto: Double): String =
+    "$" + java.text.NumberFormat.getIntegerInstance(java.util.Locale("es", "AR")).format(monto.toLong())

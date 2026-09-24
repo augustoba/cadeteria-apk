@@ -147,7 +147,7 @@ fun AppScaffold(
                     selected = currentRoute == Routes.PERFIL,
                     onClick = onIrPerfil,
                     icon = { Icon(Icons.Filled.Person, contentDescription = null) },
-                    label = { Text("Configuración") },
+                    label = { Text("Ajustes") },  // "Configuración" no entra en 4 pestañas
                 )
             }
         },

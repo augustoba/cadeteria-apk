@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -47,7 +48,7 @@ private val PASOS = listOf(
     PasoOnboarding(
         Icons.Filled.PowerSettingsNew,
         "Activate para recibir viajes",
-        "Tocá el botón grande \"Activarme\" en el Dashboard cuando arranques tu turno. Mientras estés desconectado, no te va a llegar ningún viaje nuevo.",
+        "Tocá el botón grande \"Activarme\" en Inicio cuando arranques tu turno. Mientras estés desconectado, no te va a llegar ningún viaje nuevo.",
     ),
     PasoOnboarding(
         Icons.Filled.Timer,
@@ -78,7 +79,9 @@ fun OnboardingScreen(onContinuar: () -> Unit) {
     val scope = rememberCoroutineScope()
     val esUltimo = pagerState.currentPage == PASOS.lastIndex
 
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
+    // systemBarsPadding: con edge-to-edge (MainActivity) sin esto "Saltar" quedaba debajo de la
+    // barra de estado (no se podía tocar) y "Siguiente" encima de la barra de navegación.
+    Column(Modifier.fillMaxSize().systemBarsPadding().padding(24.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onContinuar) { Text("Saltar") }
         }

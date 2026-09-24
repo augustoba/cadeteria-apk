@@ -92,6 +92,7 @@ import com.cadeteria.cadete.ui.common.BannerInfo
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.ui.common.formatearPesos
 import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.CallBlue
 import com.cadeteria.cadete.ui.theme.Emerald600
@@ -248,9 +249,9 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                         direccionCompleta(viaje.destinoDireccion, viaje.destinoPisoDepto, viaje.destinoObservaciones),
                         MaterialTheme.colorScheme.error,
                     )
-                    FilaInfo(Icons.Filled.Payments, "Precio", "$${viaje.precio}", Emerald600)
+                    FilaInfo(Icons.Filled.Payments, "Precio", formatearPesos(viaje.precio), Emerald600)
                     if (viaje.montoDeclarado != null && viaje.montoDeclarado > 0) {
-                        FilaInfo(Icons.Filled.Payments, "Va con dinero", "$${viaje.montoDeclarado}", Amber500)
+                        FilaInfo(Icons.Filled.Payments, "Va con dinero", formatearPesos(viaje.montoDeclarado), Amber500)
                     }
                     if (viaje.llevaValores) {
                         FilaInfo(Icons.Filled.Diamond, "Transporta valores", "Objetos de valor declarados por el cliente", Amber500)

@@ -79,6 +79,7 @@ import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.RutaRetiroEntrega
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.ui.common.formatearPesos
 import com.cadeteria.cadete.ui.navigation.Routes
 import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.Emerald600
@@ -339,7 +340,7 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
                     Text(
-                        if (estadoId == EstadoCadete.OCUPADO) "▶ Ponerme libre" else "⏸ Ponerme ocupado (no asignarme más)",
+                        if (estadoId == EstadoCadete.OCUPADO) "▶ Ponerme libre" else "⏸ Ponerme ocupado",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                     )
@@ -393,9 +394,6 @@ private fun Estadistica(etiqueta: String, valor: String, modifier: Modifier = Mo
     }
 }
 
-/** "$3.600" — punto de miles como en Argentina, sin decimales. */
-private fun formatearPesos(monto: Double): String =
-    "$" + java.text.NumberFormat.getIntegerInstance(java.util.Locale("es", "AR")).format(monto.toLong())
 
 /** 95 -> "1h 35m", 40 -> "40m". */
 private fun formatearDuracion(minutos: Long): String =
