@@ -92,7 +92,11 @@ fun OfertaPantalla(
                 DatoOferta(
                     "Dinero",
                     if (dinero > 0) formatearPesos(dinero) else "No",
-                    if (viaje.llevaValores) "y lleva valores" else null,
+                    if (viaje.llevaValores) {
+                        viaje.montoValores?.let { "+ ${formatearPesos(it)} en valores" } ?: "y lleva valores"
+                    } else {
+                        null
+                    },
                     Modifier.weight(1f),
                 )
             }

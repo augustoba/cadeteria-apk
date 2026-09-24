@@ -23,6 +23,8 @@ data class PedidoDto(
     val montoDeclarado: Double?,
     /** Transporta objetos de valor (no dinero) — declarado por el cliente. */
     val llevaValores: Boolean = false,
+    /** Valor declarado de esos objetos, null si no lleva. */
+    val montoValores: Double? = null,
     /**
      * Detalle, piso, depto y observaciones de cada dirección: el backend los manda en null
      * mientras la oferta no está aceptada (mejora 2026-09-24) — aparecen al aceptar.

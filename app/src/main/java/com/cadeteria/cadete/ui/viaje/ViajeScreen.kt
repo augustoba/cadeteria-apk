@@ -254,7 +254,11 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                         FilaInfo(Icons.Filled.Payments, "Va con dinero", formatearPesos(viaje.montoDeclarado), Amber500)
                     }
                     if (viaje.llevaValores) {
-                        FilaInfo(Icons.Filled.Diamond, "Transporta valores", "Objetos de valor declarados por el cliente", Amber500)
+                        FilaInfo(
+                            Icons.Filled.Diamond, "Transporta valores",
+                            viaje.montoValores?.let { "Declarados por ${formatearPesos(it)}" } ?: "Objetos de valor declarados por el cliente",
+                            Amber500,
+                        )
                     }
                     if (!viaje.detalle.isNullOrBlank()) {
                         FilaInfo(Icons.Filled.StickyNote2, "Detalle del pedido", viaje.detalle, Gray500)
