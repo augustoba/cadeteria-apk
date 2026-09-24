@@ -32,6 +32,9 @@ data class ViajeUiState(
     /** Mismo caso que finalizarEncolado pero para "Marcar como retirado" (ronda 3, punto 24). */
     val retiradoEncolado: Boolean = false,
     val enviandoComentario: Boolean = false,
+    val enviandoReporte: Boolean = false,
+    /** true tras guardar un reporte del cliente — la pantalla muestra la confirmación (spec-antiabuso Fase 3). */
+    val reporteRegistrado: Boolean = false,
     /** Si Configuración exige la firma digital del receptor para poder finalizar (ronda 3, punto 51). */
     val firmaReceptorObligatoria: Boolean = false,
     /** Para la cuenta regresiva real al ofrecer un viaje nuevo (auditoría UX 2026-09-13). */
@@ -279,6 +282,29 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 .onSuccess { _uiState.value = _uiState.value.copy(enviandoComentario = false) }
                 .onFailure { _uiState.value = _uiState.value.copy(enviandoComentario = false, error = "No se pudo guardar el comentario.") }
         }
+    }
+
+    /**
+     * "Reportar al cliente" (spec-antiabuso Fase 3): se acumula contra el teléfono, el admin lo
+     * ve en el aviso del cliente. No bloquea nada por sí solo.
+     */
+    fun reportarCliente(tipo: String, nota: String?) {
+        val id = _uiState.value.viaje?.id ?: return
+        _uiState.value = _uiState.value.copy(enviandoReporte = true, error = null)
+        viewModelScope.launch {
+            app.pedidoRepository.reportarCliente(id, tipo, nota?.trim()?.ifBlank { null })
+                .onSuccess { _uiState.value = _uiState.value.copy(enviandoReporte = false, reporteRegistrado = true) }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        enviandoReporte = false,
+                        error = "No se pudo guardar el reporte (¿ya reportaste lo mismo en este viaje?).",
+                    )
+                }
+        }
+    }
+
+    fun cerrarConfirmacionReporte() {
+        _uiState.value = _uiState.value.copy(reporteRegistrado = false)
     }
 
     /** Respuesta al popup "¿Seguís libre o te desactivás?" tras finalizar el último viaje activo. */

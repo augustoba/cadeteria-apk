@@ -80,6 +80,9 @@ data class FinalizarRequest(
 /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano") — se ve en el detalle del panel. */
 data class ComentarioRequest(val texto: String)
 
+/** "Reportar al cliente" (spec-antiabuso Fase 3). tipo: DEMORO | NO_DECLARO_VALORES | PEDIDO_FALSO | OTRO. */
+data class ReporteClienteRequest(val tipo: String, val nota: String?)
+
 /** Sección "Finalizados" de la app — espeja PedidoDtos.HistorialResponse del backend. */
 data class HistorialDto(
     val pedidos: List<PedidoDto>,

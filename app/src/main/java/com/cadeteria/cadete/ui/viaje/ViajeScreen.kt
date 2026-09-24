@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -156,6 +158,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
     var mostrarFinalizar by remember { mutableStateOf(false) }
     var mostrarRechazar by remember { mutableStateOf(false) }
     var mostrarComentario by remember { mutableStateOf(false) }
+    var mostrarReporte by remember { mutableStateOf(false) }
     var mostrarNoEntregado by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -323,6 +326,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                     onFinalizarClick = { mostrarFinalizar = true },
                     onNoEntregadoClick = { mostrarNoEntregado = true },
                     onComentarioClick = { mostrarComentario = true },
+                    onReportarClick = { mostrarReporte = true },
                 )
                 else -> BannerInfo("Este viaje ya está ${viaje.estado.nombre.lowercase()}.")
             }
@@ -349,6 +353,26 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 vm.rechazar(motivo)
                 mostrarRechazar = false
             },
+        )
+    }
+
+    if (mostrarReporte) {
+        ReporteClienteDialog(
+            enviando = state.enviandoReporte,
+            onDismiss = { mostrarReporte = false },
+            onConfirmar = { tipo, nota ->
+                vm.reportarCliente(tipo, nota)
+                mostrarReporte = false
+            },
+        )
+    }
+
+    if (state.reporteRegistrado) {
+        AlertDialog(
+            onDismissRequest = { vm.cerrarConfirmacionReporte() },
+            title = { Text("Reporte registrado") },
+            text = { Text("Quedó guardado en la ficha del cliente. La administración lo va a ver la próxima vez que pida.") },
+            confirmButton = { TextButton(onClick = { vm.cerrarConfirmacionReporte() }) { Text("Listo") } },
         )
     }
 
@@ -510,6 +534,7 @@ private fun AccionesEnCurso(
     onFinalizarClick: () -> Unit,
     onNoEntregadoClick: () -> Unit,
     onComentarioClick: () -> Unit,
+    onReportarClick: () -> Unit,
 ) {
     val context = LocalContext.current
     var fotoRetiro by remember { mutableStateOf<Bitmap?>(null) }
@@ -609,7 +634,64 @@ private fun AccionesEnCurso(
         OutlinedButton(onClick = onComentarioClick, modifier = Modifier.fillMaxWidth().height(48.dp)) {
             Text("💬 Agregar comentario")
         }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onReportarClick, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Text("🚩 Reportar al cliente")
+        }
     }
+}
+
+/** Tipos del reporte (spec-antiabuso Fase 3) — clave que viaja al backend y texto que ve el cadete. */
+private val TIPOS_REPORTE = listOf(
+    "DEMORO" to "Demoró en atender / entregar",
+    "NO_DECLARO_VALORES" to "Llevaba valores que no declaró",
+    "PEDIDO_FALSO" to "La dirección no existe / pedido falso",
+    "OTRO" to "Otro (contá qué pasó)",
+)
+
+@Composable
+private fun ReporteClienteDialog(enviando: Boolean, onDismiss: () -> Unit, onConfirmar: (String, String?) -> Unit) {
+    var tipo by remember { mutableStateOf<String?>(null) }
+    var nota by remember { mutableStateOf("") }
+    val notaObligatoria = tipo == "OTRO"
+
+    AlertDialog(
+        onDismissRequest = { if (!enviando) onDismiss() },
+        title = { Text("Reportar al cliente") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Queda anotado en la ficha de este cliente para la administración. No cancela ni cambia nada del viaje.")
+                Spacer(Modifier.height(12.dp))
+                TIPOS_REPORTE.forEach { (clave, texto) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { tipo = clave },
+                    ) {
+                        RadioButton(selected = tipo == clave, onClick = { tipo = clave })
+                        Text(texto)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { if (it.length <= 500) nota = it },
+                    label = { Text(if (notaObligatoria) "Nota (obligatoria)" else "Nota (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !enviando && tipo != null && (!notaObligatoria || nota.isNotBlank()),
+                onClick = { onConfirmar(tipo!!, nota) },
+            ) { Text(if (enviando) "Enviando…" else "Reportar") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !enviando) { Text("Cancelar") }
+        },
+    )
 }
 
 @Composable

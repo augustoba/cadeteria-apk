@@ -113,6 +113,9 @@ interface ApiService {
     @POST("api/pedidos/me/{id}/comentarios")
     suspend fun agregarComentario(@Path("id") id: String, @Body req: ComentarioRequest)
 
+    @POST("api/pedidos/me/{id}/reporte")
+    suspend fun reportarCliente(@Path("id") id: String, @Body req: ReporteClienteRequest)
+
     @GET("api/chat/{cadeteId}")
     suspend fun historialChat(@Path("cadeteId") cadeteId: String): List<MensajeDto>
 

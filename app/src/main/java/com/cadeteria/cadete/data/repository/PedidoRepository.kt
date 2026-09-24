@@ -2,6 +2,7 @@ package com.cadeteria.cadete.data.repository
 
 import com.cadeteria.cadete.data.remote.RetrofitProvider
 import com.cadeteria.cadete.data.remote.dto.ComentarioRequest
+import com.cadeteria.cadete.data.remote.dto.ReporteClienteRequest
 import com.cadeteria.cadete.data.remote.dto.FinalizarRequest
 import com.cadeteria.cadete.data.remote.dto.HistorialDto
 import com.cadeteria.cadete.data.remote.dto.NoEntregadoRequest
@@ -68,4 +69,7 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
     /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano"). */
     suspend fun agregarComentario(id: String, texto: String): Result<Unit> =
         runCatching { retrofitProvider.apiService().agregarComentario(id, ComentarioRequest(texto)) }
+
+    suspend fun reportarCliente(id: String, tipo: String, nota: String?): Result<Unit> =
+        runCatching { retrofitProvider.apiService().reportarCliente(id, ReporteClienteRequest(tipo, nota)) }
 }
