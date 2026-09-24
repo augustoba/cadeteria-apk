@@ -47,6 +47,7 @@ class PendingActionsRepository(
     }
 
     private suspend fun reintentar(item: FinalizarPendiente): Boolean {
+        var archivoPerdido = false
         var fotoUrl = item.fotoUrl
         if (fotoUrl == null && !item.fotoPathLocal.isNullOrBlank()) {
             val archivo = File(item.fotoPathLocal)
@@ -54,8 +55,11 @@ class PendingActionsRepository(
                 val config = cadeteRepository.miConfiguracion().getOrNull() ?: return false
                 fotoUrl = cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, archivo)
                     .getOrElse { return false }
+            } else {
+                // Se limpió la cache: se finaliza igual sin foto antes que perder el viaje. El flag le
+                // avisa al backend, que si no lo rechazaría por foto obligatoria y quedaría trabado acá.
+                archivoPerdido = true
             }
-            // si el archivo ya no existe (se limpió la cache), se finaliza igual sin foto antes que perder el viaje.
         }
         var firmaUrl = item.firmaUrl
         if (firmaUrl == null && !item.firmaPathLocal.isNullOrBlank()) {
@@ -64,12 +68,17 @@ class PendingActionsRepository(
                 val config = cadeteRepository.miConfiguracion().getOrNull() ?: return false
                 firmaUrl = cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, archivo, "image/jpeg")
                     .getOrElse { return false }
+            } else {
+                archivoPerdido = true
             }
         }
-        return pedidoRepository.finalizar(item.pedidoId, item.receptorNombre, fotoUrl, firmaUrl, item.lat, item.lng).isSuccess
+        return pedidoRepository.finalizar(
+            item.pedidoId, item.receptorNombre, fotoUrl, firmaUrl, item.lat, item.lng, archivoPerdido,
+        ).isSuccess
     }
 
     private suspend fun reintentarRetiro(item: RetiradoPendiente): Boolean {
+        var archivoPerdido = false
         var fotoUrl = item.fotoUrl
         if (fotoUrl == null && !item.fotoPathLocal.isNullOrBlank()) {
             val archivo = File(item.fotoPathLocal)
@@ -77,8 +86,10 @@ class PendingActionsRepository(
                 val config = cadeteRepository.miConfiguracion().getOrNull() ?: return false
                 fotoUrl = cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, archivo)
                     .getOrElse { return false }
+            } else {
+                archivoPerdido = true
             }
         }
-        return pedidoRepository.marcarRetirado(item.pedidoId, fotoUrl, item.lat, item.lng).isSuccess
+        return pedidoRepository.marcarRetirado(item.pedidoId, fotoUrl, item.lat, item.lng, archivoPerdido).isSuccess
     }
 }

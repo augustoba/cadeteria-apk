@@ -78,6 +78,9 @@ data class CadeteConfigDto(
     val telefonoSoporte: String = "",
     /** Si hace falta carnet + tarjeta verde + foto del vehículo cargados para poder activarse (mejora 2026-09-16). */
     val checklistDocumentacionObligatorio: Boolean = false,
+    /** Fotos configurables desde el panel (spec mejoras visuales §6) — se piden antes de intentar. */
+    val fotoRetiroObligatoria: Boolean = false,
+    val fotoEntregaObligatoria: Boolean = true,
 )
 
 /** Espeja PagoSemanalDtos.MiSemanaResponse (GET /api/cadetes/me/pago-semanal). */

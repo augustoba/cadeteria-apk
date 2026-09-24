@@ -61,7 +61,13 @@ data class ParadaDto(
 )
 
 /** Botón "Retirado": la foto es opcional. lat/lng: ubicación del cadete en ese momento (opcional). */
-data class RecepcionRequest(val fotoUrl: String?, val lat: Double? = null, val lng: Double? = null)
+data class RecepcionRequest(
+    val fotoUrl: String?,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    /** La foto se sacó pero el archivo local se perdió antes de subirse (cola offline) — el backend lo acepta igual. */
+    val archivoPerdido: Boolean = false,
+)
 
 /** Botón "Rechazar": motivo opcional, texto libre (para detectar patrones en Métricas). */
 data class RechazarRequest(val motivo: String?)
@@ -75,6 +81,8 @@ data class FinalizarRequest(
     val firmaUrl: String? = null,
     val lat: Double? = null,
     val lng: Double? = null,
+    /** Igual que en RecepcionRequest, para la foto/firma de la entrega. */
+    val archivoPerdido: Boolean = false,
 )
 
 /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano") — se ve en el detalle del panel. */

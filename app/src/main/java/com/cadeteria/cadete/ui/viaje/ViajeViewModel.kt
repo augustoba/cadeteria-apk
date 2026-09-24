@@ -37,6 +37,9 @@ data class ViajeUiState(
     val reporteRegistrado: Boolean = false,
     /** Si Configuración exige la firma digital del receptor para poder finalizar (ronda 3, punto 51). */
     val firmaReceptorObligatoria: Boolean = false,
+    /** Fotos configurables desde el panel (spec mejoras visuales §6). */
+    val fotoRetiroObligatoria: Boolean = false,
+    val fotoEntregaObligatoria: Boolean = true,
     /** Para la cuenta regresiva real al ofrecer un viaje nuevo (auditoría UX 2026-09-13). */
     val tiempoLimiteAceptacionSeg: Int = 120,
 )
@@ -53,6 +56,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             app.cadeteRepository.miConfiguracion().onSuccess {
                 _uiState.value = _uiState.value.copy(
                     firmaReceptorObligatoria = it.firmaReceptorObligatoria,
+                    fotoRetiroObligatoria = it.fotoRetiroObligatoria,
+                    fotoEntregaObligatoria = it.fotoEntregaObligatoria,
                     tiempoLimiteAceptacionSeg = it.tiempoLimiteAceptacionSeg,
                 )
             }

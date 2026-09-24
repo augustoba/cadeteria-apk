@@ -327,6 +327,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                     onNoEntregadoClick = { mostrarNoEntregado = true },
                     onComentarioClick = { mostrarComentario = true },
                     onReportarClick = { mostrarReporte = true },
+                    fotoRetiroObligatoria = state.fotoRetiroObligatoria,
                 )
                 else -> BannerInfo("Este viaje ya está ${viaje.estado.nombre.lowercase()}.")
             }
@@ -337,6 +338,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
         FinalizarDialog(
             enviando = state.enviando,
             firmaObligatoria = state.firmaReceptorObligatoria,
+            fotoObligatoria = state.fotoEntregaObligatoria,
             onDismiss = { mostrarFinalizar = false },
             onConfirmar = { receptor, foto, firma ->
                 vm.finalizar(receptor, foto, firma)
@@ -535,6 +537,7 @@ private fun AccionesEnCurso(
     onNoEntregadoClick: () -> Unit,
     onComentarioClick: () -> Unit,
     onReportarClick: () -> Unit,
+    fotoRetiroObligatoria: Boolean,
 ) {
     val context = LocalContext.current
     var fotoRetiro by remember { mutableStateOf<Bitmap?>(null) }
@@ -553,7 +556,11 @@ private fun AccionesEnCurso(
     Column {
         if (!yaRetirado) {
             Text(
-                "Cuando pases por lo del cliente a buscar el pedido, marcalo acá (la foto es opcional).",
+                if (fotoRetiroObligatoria) {
+                    "Cuando pases por lo del cliente a buscar el pedido, sacale una foto y marcalo acá."
+                } else {
+                    "Cuando pases por lo del cliente a buscar el pedido, marcalo acá (la foto es opcional)."
+                },
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(8.dp))
@@ -569,10 +576,17 @@ private fun AccionesEnCurso(
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
             ) {
-                Text(if (fotoRetiro == null) "Sacar foto del retiro (opcional)" else "Sacar otra foto")
+                Text(
+                    when {
+                        fotoRetiro != null -> "Sacar otra foto"
+                        fotoRetiroObligatoria -> "Sacar foto del retiro"
+                        else -> "Sacar foto del retiro (opcional)"
+                    },
+                )
             }
             Spacer(Modifier.height(8.dp))
             Button(
+                enabled = !fotoRetiroObligatoria || fotoRetiro != null,
                 onClick = { onMarcarRetirado(archivoFotoRetiro) },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("📦 Marcar como retirado", fontWeight = FontWeight.SemiBold) }
@@ -698,6 +712,7 @@ private fun ReporteClienteDialog(enviando: Boolean, onDismiss: () -> Unit, onCon
 private fun FinalizarDialog(
     enviando: Boolean,
     firmaObligatoria: Boolean,
+    fotoObligatoria: Boolean,
     onDismiss: () -> Unit,
     onConfirmar: (String?, File?, File?) -> Unit,
 ) {
@@ -717,7 +732,13 @@ private fun FinalizarDialog(
         title = { Text("Finalizar viaje") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Para finalizar hace falta el nombre y apellido de quien recibió el pedido, y una foto de la entrega (o del frente del domicilio).")
+                Text(
+                    if (fotoObligatoria) {
+                        "Para finalizar hace falta el nombre y apellido de quien recibió el pedido, y una foto de la entrega (o del frente del domicilio)."
+                    } else {
+                        "Para finalizar hace falta el nombre y apellido de quien recibió el pedido. La foto de la entrega es opcional."
+                    },
+                )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = receptor,
@@ -761,7 +782,7 @@ private fun FinalizarDialog(
         },
         confirmButton = {
             Button(
-                enabled = !enviando && receptor.isNotBlank() && foto != null && (!firmaObligatoria || hayFirma),
+                enabled = !enviando && receptor.isNotBlank() && (!fotoObligatoria || foto != null) && (!firmaObligatoria || hayFirma),
                 onClick = {
                     val archivoFirma = if (hayFirma) {
                         trazosABitmap(trazosFirma, tamanoFirma.width, tamanoFirma.height)

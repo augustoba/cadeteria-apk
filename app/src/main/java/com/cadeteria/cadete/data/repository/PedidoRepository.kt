@@ -40,8 +40,14 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         runCatching { retrofitProvider.apiService().rechazarViaje(id, RechazarRequest(motivo)) }
 
     /** Botón "Retirado" — foto opcional (null si el cadete no sacó ninguna). lat/lng opcionales (sin GPS disponible). */
-    suspend fun marcarRetirado(id: String, fotoUrl: String?, lat: Double? = null, lng: Double? = null): Result<PedidoDto> =
-        runCatching { retrofitProvider.apiService().marcarRetirado(id, RecepcionRequest(fotoUrl, lat, lng)) }
+    suspend fun marcarRetirado(
+        id: String,
+        fotoUrl: String?,
+        lat: Double? = null,
+        lng: Double? = null,
+        archivoPerdido: Boolean = false,
+    ): Result<PedidoDto> =
+        runCatching { retrofitProvider.apiService().marcarRetirado(id, RecepcionRequest(fotoUrl, lat, lng, archivoPerdido)) }
 
     suspend fun finalizar(
         id: String,
@@ -50,8 +56,11 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         firmaUrl: String? = null,
         lat: Double? = null,
         lng: Double? = null,
+        archivoPerdido: Boolean = false,
     ): Result<PedidoDto> =
-        runCatching { retrofitProvider.apiService().finalizarViaje(id, FinalizarRequest(receptorNombre, fotoUrl, firmaUrl, lat, lng)) }
+        runCatching {
+            retrofitProvider.apiService().finalizarViaje(id, FinalizarRequest(receptorNombre, fotoUrl, firmaUrl, lat, lng, archivoPerdido))
+        }
 
     /** Botón "No se pudo entregar" (ej. el cliente no atendió) — el pedido no se anula, lo puede reintentar el admin. */
     suspend fun marcarNoEntregado(id: String, motivo: String? = null): Result<PedidoDto> =
