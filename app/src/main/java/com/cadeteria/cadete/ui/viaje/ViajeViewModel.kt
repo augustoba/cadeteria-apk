@@ -7,12 +7,14 @@ import com.cadeteria.cadete.data.remote.dto.EstadoCadete
 import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.data.remote.dto.RutaResponseDto
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.location.ubicacionActual
+import com.cadeteria.cadete.util.Validaciones
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 data class ViajeUiState(
     val cargando: Boolean = true,
@@ -95,7 +97,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
                         enviando = false,
-                        error = "No se pudo aceptar — puede que ya se le haya ofrecido a otro cadete.",
+                        error = it.mensajeDelServidor() ?: "No se pudo aceptar — revisá tu conexión y probá de nuevo.",
                     )
                 }
         }
@@ -107,7 +109,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         viewModelScope.launch {
             app.pedidoRepository.rechazar(id, motivo)
                 .onSuccess { _uiState.value = _uiState.value.copy(enviando = false, viaje = null, terminado = true) }
-                .onFailure { _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo rechazar el viaje.") }
+                .onFailure { _uiState.value = _uiState.value.copy(enviando = false, error = it.mensajeDelServidor() ?: "No se pudo rechazar el viaje.") }
         }
     }
 
@@ -152,7 +154,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 if (e is java.io.IOException) {
                     encolarRetiradoOffline(id, fotoUrl, fotoPathLocal, ubicacion)
                 } else {
-                    _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo marcar como retirado.")
+                    _uiState.value = _uiState.value.copy(enviando = false, error = e.mensajeDelServidor() ?: "No se pudo marcar como retirado.")
                 }
             }
     }
@@ -170,6 +172,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
      */
     fun finalizar(receptorNombre: String?, foto: File?, firma: File?) {
         val id = _uiState.value.viaje?.id ?: return
+        if (!Validaciones.vacioO(Validaciones.NOMBRE_PERSONA, receptorNombre)) {
+            _uiState.value = _uiState.value.copy(error = Validaciones.MSJ_RECEPTOR)
+            return
+        }
         _uiState.value = _uiState.value.copy(enviando = true, error = null)
         viewModelScope.launch {
             val ubicacion = ubicacionActual(app)
@@ -238,7 +244,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 if (e is java.io.IOException) {
                     encolarFinalizarOffline(id, receptorNombre, fotoUrl, fotoPathLocal, firmaUrl, firmaPathLocal, ubicacion)
                 } else {
-                    _uiState.value = _uiState.value.copy(enviando = false, error = e.message ?: "No se pudo finalizar el viaje.")
+                    _uiState.value = _uiState.value.copy(enviando = false, error = e.mensajeDelServidor() ?: "No se pudo finalizar el viaje.")
                 }
             }
     }

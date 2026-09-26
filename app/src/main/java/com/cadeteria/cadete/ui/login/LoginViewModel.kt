@@ -3,6 +3,7 @@ package com.cadeteria.cadete.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cadeteria.cadete.CadeteApp
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.data.repository.VersionDesactualizadaException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,10 +36,11 @@ class LoginViewModel(private val app: CadeteApp) : ViewModel() {
                 .onFailure {
                     _uiState.value = LoginUiState(
                         cargando = false,
-                        error = if (it is VersionDesactualizadaException) {
-                            it.message
-                        } else {
-                            "Usuario o contraseña incorrectos, o no se pudo conectar con el servidor."
+                        error = when {
+                            it is VersionDesactualizadaException -> it.message
+                            // El backend dice el motivo: contraseña mal, cuenta bloqueada por intentos,
+                            // cuota semanal impaga o contraseña temporal vencida (2026-09-26).
+                            else -> it.mensajeDelServidor() ?: "No se pudo conectar con el servidor. Revisá tu conexión."
                         },
                     )
                 }

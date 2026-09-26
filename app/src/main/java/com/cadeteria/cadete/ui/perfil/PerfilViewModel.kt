@@ -9,13 +9,15 @@ import com.cadeteria.cadete.data.remote.dto.CadeteActualizacionDto
 import com.cadeteria.cadete.data.remote.dto.CadeteConfigDto
 import com.cadeteria.cadete.data.remote.dto.CadeteDto
 import com.cadeteria.cadete.data.remote.dto.MiSemanaDto
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.ui.theme.TemaApp
+import com.cadeteria.cadete.util.Validaciones
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
 
 data class PerfilUiState(
     val guardandoPassword: Boolean = false,
@@ -68,6 +70,10 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
     }
 
     fun cambiarPassword(actual: String, nueva: String, onOk: () -> Unit) {
+        if (!Validaciones.passwordValida(nueva)) {
+            _uiState.value = _uiState.value.copy(error = Validaciones.MSJ_PASSWORD, mensaje = null)
+            return
+        }
         _uiState.value = _uiState.value.copy(guardandoPassword = true, error = null, mensaje = null)
         viewModelScope.launch {
             app.cadeteRepository.cambiarPassword(actual, nueva)
@@ -76,12 +82,16 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
                     onOk()
                 }
                 .onFailure {
-                    _uiState.value = _uiState.value.copy(guardandoPassword = false, error = "No se pudo cambiar la contraseña — revisá la actual.")
+                    _uiState.value = _uiState.value.copy(guardandoPassword = false, error = it.mensajeDelServidor() ?: "No se pudo cambiar la contraseña — revisá tu conexión.")
                 }
         }
     }
 
     fun actualizarTelefono(telefono: String) {
+        if (!Validaciones.TELEFONO.matches(telefono)) {
+            _uiState.value = _uiState.value.copy(error = Validaciones.MSJ_TELEFONO, mensaje = null)
+            return
+        }
         _uiState.value = _uiState.value.copy(guardandoTelefono = true, error = null, mensaje = null)
         viewModelScope.launch {
             app.cadeteRepository.actualizarTelefono(telefono)
@@ -89,11 +99,19 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
                     _cadete.value = it
                     _uiState.value = _uiState.value.copy(guardandoTelefono = false, mensaje = "Teléfono actualizado.")
                 }
-                .onFailure { _uiState.value = _uiState.value.copy(guardandoTelefono = false, error = "No se pudo actualizar el teléfono.") }
+                .onFailure { _uiState.value = _uiState.value.copy(guardandoTelefono = false, error = it.mensajeDelServidor() ?: "No se pudo actualizar el teléfono.") }
         }
     }
 
     fun actualizarCuenta(cbu: String, aliasCbu: String) {
+        val mal = Validaciones.problemas(
+            !Validaciones.vacioO(Validaciones.CBU, cbu.trim()) to Validaciones.MSJ_CBU,
+            !Validaciones.vacioO(Validaciones.ALIAS_CBU, aliasCbu.trim()) to Validaciones.MSJ_ALIAS,
+        )
+        if (mal != null) {
+            _uiState.value = _uiState.value.copy(error = mal, mensaje = null)
+            return
+        }
         _uiState.value = _uiState.value.copy(guardandoCuenta = true, error = null, mensaje = null)
         viewModelScope.launch {
             app.cadeteRepository.actualizarCuenta(cbu.ifBlank { null }, aliasCbu.ifBlank { null })
@@ -101,7 +119,7 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
                     _cadete.value = it
                     _uiState.value = _uiState.value.copy(guardandoCuenta = false, mensaje = "Datos de cobro guardados.")
                 }
-                .onFailure { _uiState.value = _uiState.value.copy(guardandoCuenta = false, error = "No se pudieron guardar los datos de cobro.") }
+                .onFailure { _uiState.value = _uiState.value.copy(guardandoCuenta = false, error = it.mensajeDelServidor() ?: "No se pudieron guardar los datos de cobro.") }
         }
     }
 
@@ -134,13 +152,24 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
     }
 
     fun proponerDatosVehiculo(marca: String, modelo: String, color: String, patente: String, anio: String) {
+        val mal = Validaciones.problemas(
+            !Validaciones.vacioO(Validaciones.MARCA_MODELO, marca.trim()) to Validaciones.MSJ_MARCA,
+            !Validaciones.vacioO(Validaciones.MARCA_MODELO, modelo.trim()) to Validaciones.MSJ_MODELO,
+            !Validaciones.vacioO(Validaciones.COLOR, color.trim()) to Validaciones.MSJ_COLOR,
+            !Validaciones.vacioO(Validaciones.PATENTE_MOTO, patente) to Validaciones.MSJ_PATENTE,
+            (anio.isNotBlank() && anio.toIntOrNull()?.let { it in 1950..2100 } != true) to "El año del vehículo no es válido.",
+        )
+        if (mal != null) {
+            _uiState.value = _uiState.value.copy(error = mal, mensaje = null)
+            return
+        }
         viewModelScope.launch {
             enviarActualizacion(
                 ActualizacionCadeteRequestDto(
                     vehiculoMarca = marca.ifBlank { null },
                     vehiculoModelo = modelo.ifBlank { null },
                     vehiculoColor = color.ifBlank { null },
-                    vehiculoPatente = patente.ifBlank { null },
+                    vehiculoPatente = patente.ifBlank { null }?.let { Validaciones.normalizarPatente(it) },
                     vehiculoAnio = anio.toIntOrNull(),
                 ),
             )
@@ -155,7 +184,7 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
                 app.cadeteRepository.misActualizaciones().onSuccess { lista -> _misActualizaciones.value = lista }
             }
             .onFailure {
-                _uiState.value = _uiState.value.copy(guardandoActualizacion = false, error = "No se pudo enviar la actualización — puede que ya tengas una pendiente de revisión.")
+                _uiState.value = _uiState.value.copy(guardandoActualizacion = false, error = it.mensajeDelServidor() ?: "No se pudo enviar la actualización — revisá tu conexión.")
             }
     }
 

@@ -3,6 +3,8 @@ package com.cadeteria.cadete.ui.recuperarpassword
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cadeteria.cadete.CadeteApp
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
+import com.cadeteria.cadete.util.Validaciones
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -60,6 +62,14 @@ class RecuperarPasswordViewModel(private val app: CadeteApp) : ViewModel() {
             _uiState.value = _uiState.value.copy(error = "Las contraseñas no coinciden.")
             return
         }
+        val mal = Validaciones.problemas(
+            !Validaciones.CODIGO_6.matches(codigo) to Validaciones.MSJ_CODIGO,
+            !Validaciones.passwordValida(nuevaPassword) to Validaciones.MSJ_PASSWORD,
+        )
+        if (mal != null) {
+            _uiState.value = _uiState.value.copy(error = mal)
+            return
+        }
         _uiState.value = _uiState.value.copy(cargando = true, error = null)
         viewModelScope.launch {
             app.authRepository.confirmarRecuperarPassword(username, codigo, nuevaPassword)
@@ -71,7 +81,7 @@ class RecuperarPasswordViewModel(private val app: CadeteApp) : ViewModel() {
                     )
                 }
                 .onFailure {
-                    _uiState.value = _uiState.value.copy(cargando = false, error = "Código inválido o vencido.")
+                    _uiState.value = _uiState.value.copy(cargando = false, error = it.mensajeDelServidor() ?: "No se pudo conectar con el servidor.")
                 }
         }
     }
