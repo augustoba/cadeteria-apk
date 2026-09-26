@@ -10,7 +10,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /** Posición al marcar Retirado/Entregado, con su error en metros (null si el teléfono no lo informa). */
-data class UbicacionMarcada(val lat: Double, val lng: Double, val precisionM: Float?)
+data class UbicacionMarcada(
+    val lat: Double,
+    val lng: Double,
+    val precisionM: Float?,
+    /** Calle según el Geocoder del teléfono (solo con buena precisión) — ayuda a confirmar la dirección. */
+    val calle: CalleDetectada? = null,
+)
 
 /**
  * Lectura de GPS nueva y precisa para Retirado/Entregado (2026-09-26): con buena precisión el
@@ -34,7 +40,9 @@ suspend fun ubicacionPrecisa(context: Context, esperaMs: Long = 8_000): Ubicacio
         }
     }
     if (fresca != null) {
-        return UbicacionMarcada(fresca.latitude, fresca.longitude, if (fresca.hasAccuracy()) fresca.accuracy else null)
+        val precision = if (fresca.hasAccuracy()) fresca.accuracy else null
+        val calle = if (precision != null && precision <= 50f) calleDelTelefono(context, fresca.latitude, fresca.longitude) else null
+        return UbicacionMarcada(fresca.latitude, fresca.longitude, precision, calle)
     }
     return ubicacionActual(context)?.let { UbicacionMarcada(it.first, it.second, null) }
 }

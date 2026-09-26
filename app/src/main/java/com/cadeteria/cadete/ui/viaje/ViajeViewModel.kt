@@ -149,7 +149,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
     }
 
     private suspend fun ejecutarRetirado(id: String, fotoUrl: String?, fotoPathLocal: String?, ubicacion: UbicacionMarcada?) {
-        app.pedidoRepository.marcarRetirado(id, fotoUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM)
+        app.pedidoRepository.marcarRetirado(
+            id, fotoUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM,
+            calleDetectada = ubicacion?.calle?.calle, localidadDetectada = ubicacion?.calle?.localidad,
+        )
             .onSuccess { _uiState.value = _uiState.value.copy(enviando = false, viaje = it) }
             .onFailure { e ->
                 if (e is java.io.IOException) {
@@ -231,7 +234,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         firmaPathLocal: String?,
         ubicacion: UbicacionMarcada?,
     ) {
-        app.pedidoRepository.finalizar(id, receptorNombre, fotoUrl, firmaUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM)
+        app.pedidoRepository.finalizar(
+            id, receptorNombre, fotoUrl, firmaUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM,
+            calleDetectada = ubicacion?.calle?.calle, localidadDetectada = ubicacion?.calle?.localidad,
+        )
             .onSuccess {
                 val quedanActivos = app.pedidoRepository.viajesActivos().getOrNull()?.isNotEmpty() ?: true
                 _uiState.value = _uiState.value.copy(

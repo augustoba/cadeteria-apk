@@ -51,7 +51,18 @@ data class CadeteDto(
 
 data class EstadoRequest(val estadoId: String)
 
-data class UbicacionRequest(val lat: Double, val lng: Double)
+/**
+ * calle/altura/localidad: lo que resolvió el Geocoder del teléfono para este punto (2026-09-26),
+ * null si no se resolvió en este ping. precision: error del GPS en metros.
+ */
+data class UbicacionRequest(
+    val lat: Double,
+    val lng: Double,
+    val calle: String? = null,
+    val altura: Int? = null,
+    val localidad: String? = null,
+    val precision: Float? = null,
+)
 
 data class FcmTokenRequest(val fcmToken: String)
 

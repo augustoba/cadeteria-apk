@@ -29,8 +29,17 @@ class CadeteRepository(private val retrofitProvider: RetrofitProvider) {
     suspend fun actualizarEstado(estadoId: String): Result<CadeteDto> =
         runCatching { retrofitProvider.apiService().actualizarEstado(EstadoRequest(estadoId)) }
 
-    suspend fun actualizarUbicacion(lat: Double, lng: Double): Result<CadeteDto> =
-        runCatching { retrofitProvider.apiService().actualizarUbicacion(UbicacionRequest(lat, lng)) }
+    suspend fun actualizarUbicacion(
+        lat: Double,
+        lng: Double,
+        calle: com.cadeteria.cadete.location.CalleDetectada? = null,
+        precision: Float? = null,
+    ): Result<CadeteDto> =
+        runCatching {
+            retrofitProvider.apiService().actualizarUbicacion(
+                UbicacionRequest(lat, lng, calle?.calle, calle?.altura, calle?.localidad, precision),
+            )
+        }
 
     suspend fun actualizarFcmToken(token: String): Result<CadeteDto> =
         runCatching { retrofitProvider.apiService().actualizarFcmToken(FcmTokenRequest(token)) }

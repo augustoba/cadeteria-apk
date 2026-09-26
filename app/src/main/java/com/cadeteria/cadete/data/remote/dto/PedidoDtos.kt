@@ -76,6 +76,9 @@ data class RecepcionRequest(
     val archivoPerdido: Boolean = false,
     /** Error del GPS en metros: con buena precisión el backend aprende la dirección (2026-09-26). */
     val precision: Float? = null,
+    /** Calle/localidad según el Geocoder del teléfono en ese punto, para confirmar la dirección. */
+    val calleDetectada: String? = null,
+    val localidadDetectada: String? = null,
 )
 
 /** Botón "Rechazar": motivo opcional, texto libre (para detectar patrones en Métricas). */
@@ -94,6 +97,9 @@ data class FinalizarRequest(
     val archivoPerdido: Boolean = false,
     /** Error del GPS en metros: con buena precisión el backend aprende la dirección (2026-09-26). */
     val precision: Float? = null,
+    /** Calle/localidad según el Geocoder del teléfono en ese punto, para confirmar la dirección. */
+    val calleDetectada: String? = null,
+    val localidadDetectada: String? = null,
 )
 
 /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano") — se ve en el detalle del panel. */

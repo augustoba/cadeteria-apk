@@ -40,6 +40,8 @@ class LocationTrackingService : Service() {
     }
 
     private val avisoLlegada = AvisoLlegada()
+    /** Calle del Geocoder del teléfono: cada ~120 m o 2 min, solo con buena precisión (2026-09-26). */
+    private val throttleCalle = ThrottleCalle()
     private val mutexLlegada = Mutex()
     private var viajes: List<PedidoDto> = emptyList()
     private var viajesLeidosEn = 0L
@@ -72,7 +74,15 @@ class LocationTrackingService : Service() {
             override fun onLocationResult(result: LocationResult) {
                 val loc = result.lastLocation ?: return
                 scope.launch {
-                    app.cadeteRepository.actualizarUbicacion(loc.latitude, loc.longitude)
+                    val precision = if (loc.hasAccuracy()) loc.accuracy else null
+                    val ahora = System.currentTimeMillis()
+                    // Si toca, se resuelve la calle con el Geocoder del teléfono (hasta 3 s); si no
+                    // la encuentra, la posición se manda igual, sin calle.
+                    val calle = if (throttleCalle.debeResolver(loc.latitude, loc.longitude, precision, ahora)) {
+                        throttleCalle.registrar(loc.latitude, loc.longitude, ahora)
+                        calleDelTelefono(this@LocationTrackingService, loc.latitude, loc.longitude)?.takeIf { it.altura != null }
+                    } else null
+                    app.cadeteRepository.actualizarUbicacion(loc.latitude, loc.longitude, calle, precision)
                     revisarLlegada(app, loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy else null)
                 }
             }
