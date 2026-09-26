@@ -91,6 +91,7 @@ import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.BannerInfo
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
+import com.cadeteria.cadete.ui.common.horaLocal
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.common.formatearPesos
 import com.cadeteria.cadete.ui.theme.Amber500
@@ -98,6 +99,8 @@ import com.cadeteria.cadete.ui.theme.CallBlue
 import com.cadeteria.cadete.ui.theme.Emerald600
 import com.cadeteria.cadete.ui.theme.Gray500
 import com.cadeteria.cadete.ui.theme.MapsBlue
+import com.cadeteria.cadete.ui.theme.Red50
+import com.cadeteria.cadete.ui.theme.Red600
 import com.cadeteria.cadete.ui.theme.WazeCyan
 import com.cadeteria.cadete.ui.theme.WhatsappGreen
 import com.cadeteria.cadete.util.corregirRotacionExif
@@ -231,6 +234,49 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
 
             MapaViaje(viaje, state.ruta?.features?.firstOrNull()?.geometry?.coordinates)
             Spacer(Modifier.height(16.dp))
+
+            // Reclamo del cliente desde la página de seguimiento (2026-09-25): queda en el viaje, no
+            // solo en la notificación. Con botones para contactarlo aunque el viaje ya esté entregado.
+            if (!viaje.reclamoDetalle.isNullOrBlank()) {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = Red50),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Red600),
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "📣 Reclamo del cliente" + (viaje.reclamoEn?.let { " · ${horaLocal(it)}" } ?: ""),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Red600,
+                        )
+                        Text(viaje.reclamoDetalle, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Comunicate con ${viaje.clienteNombre} a la brevedad.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Gray500,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BotonAccion(
+                                texto = "Llamar",
+                                icono = Icons.Filled.Call,
+                                color = CallBlue,
+                                onClick = { llamarACliente(context, viaje.clienteTelefono) },
+                                modifier = Modifier.weight(1f),
+                            )
+                            BotonAccion(
+                                texto = "WhatsApp",
+                                icono = Icons.Filled.Chat,
+                                color = WhatsappGreen,
+                                onClick = { enviarWhatsapp(context, viaje.clienteTelefono) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
 
             Card(
                 Modifier.fillMaxWidth(),

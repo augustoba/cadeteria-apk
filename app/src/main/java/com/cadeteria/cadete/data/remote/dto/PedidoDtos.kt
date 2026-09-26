@@ -52,6 +52,9 @@ data class PedidoDto(
     val tokenSeguimiento: String,
     /** Paradas intermedias, en orden (repartos con varias entregas en la misma vuelta) — vacío si el pedido es simple. */
     val paradas: List<ParadaDto> = emptyList(),
+    /** Último reclamo del cliente desde el seguimiento (2026-09-25) — null si no reclamó. */
+    val reclamoDetalle: String? = null,
+    val reclamoEn: String? = null,
 )
 
 /** Espeja PedidoDtos.ParadaResponse. */
@@ -117,6 +120,8 @@ object EventoViaje {
     const val VIAJE_ASIGNADO = "VIAJE_ASIGNADO"
     const val VIAJE_QUITADO = "VIAJE_QUITADO"
     const val VIAJE_CANCELADO = "VIAJE_CANCELADO"
+    /** El cliente reclamó desde el seguimiento: solo hay que recargar el viaje para mostrarlo. */
+    const val RECLAMO_CLIENTE = "RECLAMO_CLIENTE"
 }
 
 /**

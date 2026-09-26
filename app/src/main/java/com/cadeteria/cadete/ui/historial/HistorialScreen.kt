@@ -230,6 +230,16 @@ private fun PedidoFinalizadoCard(pedido: PedidoDto, onClick: () -> Unit) {
                     MiniEvento(Icons.Filled.Inventory2, horaCorta(pedido.retiradoEn), Amber500)
                     MiniEvento(Icons.Filled.DoneAll, horaCorta(pedido.finalizadoEn), Emerald600)
                 }
+                // Reclamo del cliente (2026-09-25): tocar la tarjeta abre el viaje con el detalle.
+                if (!pedido.reclamoDetalle.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "📣 Reclamo del cliente — tocá para ver",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = com.cadeteria.cadete.ui.theme.Red600,
+                    )
+                }
             }
             Text("$${pedido.precio}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = CademOrange)
             Spacer(Modifier.width(8.dp))

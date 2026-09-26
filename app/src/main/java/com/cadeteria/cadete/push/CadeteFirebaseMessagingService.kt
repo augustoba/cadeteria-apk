@@ -33,10 +33,11 @@ class CadeteFirebaseMessagingService : FirebaseMessagingService() {
         val canal = if (tipo == "CHAT") NotificationHelper.CANAL_CHAT else NotificationHelper.CANAL_VIAJES
         val destino = when (tipo) {
             "CHAT" -> NotificationHelper.DESTINO_CHAT
-            EventoViaje.VIAJE_ASIGNADO -> NotificationHelper.DESTINO_VIAJE
+            EventoViaje.VIAJE_ASIGNADO, EventoViaje.RECLAMO_CLIENTE -> NotificationHelper.DESTINO_VIAJE
             else -> null
         }
-        val pedidoId = if (tipo == EventoViaje.VIAJE_ASIGNADO) message.data["pedidoId"] else null
+        // Tocar la notificación de un reclamo abre ese viaje, donde está el recuadro con el reclamo.
+        val pedidoId = if (tipo == EventoViaje.VIAJE_ASIGNADO || tipo == EventoViaje.RECLAMO_CLIENTE) message.data["pedidoId"] else null
         NotificationHelper.mostrar(
             applicationContext, canal, id = tipo.hashCode(), titulo = titulo, cuerpo = cuerpo,
             destino = destino, pedidoId = pedidoId,

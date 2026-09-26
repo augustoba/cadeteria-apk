@@ -338,6 +338,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 when (evento.tipo) {
                     EventoViaje.VIAJE_QUITADO, EventoViaje.VIAJE_CANCELADO ->
                         _uiState.value = _uiState.value.copy(viaje = null, terminado = true, error = "Te quitaron este viaje.")
+                    // Reclamo del cliente (2026-09-25): recargar para que aparezca el recuadro rojo.
+                    EventoViaje.RECLAMO_CLIENTE -> cargar()
                 }
             }
         }

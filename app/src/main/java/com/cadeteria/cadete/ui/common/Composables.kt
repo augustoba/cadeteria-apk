@@ -124,6 +124,11 @@ fun parsearInstanteUtc(iso: String): Long? = runCatching {
     formato.parse(iso.take(19))?.time
 }.getOrNull()
 
+/** "2026-09-26T02:45:24Z" -> "23:45" en la hora del teléfono (el backend manda los instantes en UTC). */
+fun horaLocal(iso: String): String = parsearInstanteUtc(iso)?.let {
+    java.text.SimpleDateFormat("HH:mm", java.util.Locale("es", "AR")).format(java.util.Date(it))
+} ?: "--:--"
+
 /** 80 -> "1:20"; negativo se trata como 0. */
 fun formatearCuentaRegresiva(segundos: Int): String {
     val s = segundos.coerceAtLeast(0)
