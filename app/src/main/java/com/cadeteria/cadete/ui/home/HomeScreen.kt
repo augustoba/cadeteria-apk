@@ -108,8 +108,18 @@ fun HomeScreen(
     val vm: HomeViewModel = viewModel(factory = ViewModelFactory(app) { HomeViewModel(it) })
     val state by vm.uiState.collectAsState()
 
+    // La ubicación ya la garantiza PermisoUbicacionScreen (CadeteNavGraph); acá queda para las notificaciones.
     val permisosLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
     LaunchedEffect(Unit) { permisosLauncher.launch(permisosUbicacion.toTypedArray()) }
+
+    // El servicio de ubicación solo arrancaba al tocar el botón de estado: si la app se abría con el
+    // cadete ya Libre u Ocupado (reinstalación, reinicio, Android que mató el proceso) mostraba "Libre"
+    // y no mandaba nada — en la prueba del 2026-09-26, 20 min sin ubicaciones. Arrancarlo de más no
+    // duplica nada (LocationTrackingService reemplaza la escucha anterior).
+    val estadoCadete = state.cadete?.estado?.id
+    LaunchedEffect(estadoCadete) {
+        if (estadoCadete != null && estadoCadete != EstadoCadete.DESCONECTADO) LocationServiceController.iniciar(context)
+    }
 
     state.bienvenida?.let { b ->
         androidx.compose.material3.AlertDialog(

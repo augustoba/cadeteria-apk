@@ -18,11 +18,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.location.LocationServiceController
+import com.cadeteria.cadete.location.rememberPermisoUbicacion
 import com.cadeteria.cadete.location.rememberUbicacionHabilitada
 import com.cadeteria.cadete.ui.avisos.AvisosScreen
 import com.cadeteria.cadete.ui.ayuda.AyudaScreen
 import com.cadeteria.cadete.ui.chat.ChatScreen
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
+import com.cadeteria.cadete.ui.common.PermisoUbicacionScreen
 import com.cadeteria.cadete.ui.common.UbicacionDesactivadaScreen
 import com.cadeteria.cadete.ui.historial.HistorialScreen
 import com.cadeteria.cadete.ui.home.HomeScreen
@@ -45,6 +47,13 @@ fun CadeteNavGraph() {
         UbicacionDesactivadaScreen(onActivarUbicacion = {
             context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
         })
+        return
+    }
+
+    // Sin permiso de ubicación no se entra, ni al login (2026-09-26).
+    val permisoUbicacion = rememberPermisoUbicacion()
+    if (!permisoUbicacion.value) {
+        PermisoUbicacionScreen(onConcedido = { permisoUbicacion.value = true })
         return
     }
 

@@ -115,9 +115,11 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
 
                     OutlinedTextField(
                         value = username,
-                        onValueChange = { username = it },
-                        label = { Text("Usuario") },
+                        // El usuario del cadete es su DNI (el alta ya lo exige, 2026-09-26): solo números.
+                        onValueChange = { username = it.filter(Char::isDigit).take(8) },
+                        label = { Text("Usuario (tu DNI, solo números)") },
                         singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                         leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),

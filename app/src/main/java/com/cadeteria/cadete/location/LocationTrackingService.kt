@@ -43,6 +43,8 @@ class LocationTrackingService : Service() {
     /** Calle del Geocoder del teléfono: cada ~120 m o 2 min, solo con buena precisión (2026-09-26). */
     private val throttleCalle = ThrottleCalle()
     private val mutexLlegada = Mutex()
+    /** Dos arranques seguidos no registran dos escuchas a la vez. */
+    private val mutexInicio = Mutex()
     private var viajes: List<PedidoDto> = emptyList()
     private var viajesLeidosEn = 0L
 
@@ -57,7 +59,7 @@ class LocationTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, construirNotificacion())
-        scope.launch { iniciarActualizaciones() }
+        scope.launch { mutexInicio.withLock { iniciarActualizaciones() } }
         return START_STICKY
     }
 
@@ -69,6 +71,11 @@ class LocationTrackingService : Service() {
         val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, intervaloMs)
             .setMinUpdateIntervalMillis(intervaloMs / 2)
             .build()
+
+        // Arrancar el servicio de nuevo (Libre -> Ocupado, o al abrir la app ya Libre) volvía a
+        // registrar otra escucha sin soltar la anterior y los envíos se duplicaban (2026-09-26).
+        // Ahora se reemplaza: también sirve para tomar una frecuencia nueva sin reinstalar nada.
+        callback?.let { fusedClient.removeLocationUpdates(it) }
 
         callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
