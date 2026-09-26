@@ -53,8 +53,9 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         lat: Double? = null,
         lng: Double? = null,
         archivoPerdido: Boolean = false,
+        precision: Float? = null,
     ): Result<PedidoDto> =
-        runCatching { retrofitProvider.apiService().marcarRetirado(id, RecepcionRequest(fotoUrl, lat, lng, archivoPerdido)) }
+        runCatching { retrofitProvider.apiService().marcarRetirado(id, RecepcionRequest(fotoUrl, lat, lng, archivoPerdido, precision)) }
 
     suspend fun finalizar(
         id: String,
@@ -64,9 +65,10 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         lat: Double? = null,
         lng: Double? = null,
         archivoPerdido: Boolean = false,
+        precision: Float? = null,
     ): Result<PedidoDto> =
         runCatching {
-            retrofitProvider.apiService().finalizarViaje(id, FinalizarRequest(receptorNombre, fotoUrl, firmaUrl, lat, lng, archivoPerdido))
+            retrofitProvider.apiService().finalizarViaje(id, FinalizarRequest(receptorNombre, fotoUrl, firmaUrl, lat, lng, archivoPerdido, precision))
         }
 
     /** Botón "No se pudo entregar" (ej. el cliente no atendió) — el pedido no se anula, lo puede reintentar el admin. */

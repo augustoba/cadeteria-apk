@@ -74,6 +74,8 @@ data class RecepcionRequest(
     val lng: Double? = null,
     /** La foto se sacó pero el archivo local se perdió antes de subirse (cola offline) — el backend lo acepta igual. */
     val archivoPerdido: Boolean = false,
+    /** Error del GPS en metros: con buena precisión el backend aprende la dirección (2026-09-26). */
+    val precision: Float? = null,
 )
 
 /** Botón "Rechazar": motivo opcional, texto libre (para detectar patrones en Métricas). */
@@ -90,6 +92,8 @@ data class FinalizarRequest(
     val lng: Double? = null,
     /** Igual que en RecepcionRequest, para la foto/firma de la entrega. */
     val archivoPerdido: Boolean = false,
+    /** Error del GPS en metros: con buena precisión el backend aprende la dirección (2026-09-26). */
+    val precision: Float? = null,
 )
 
 /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano") — se ve en el detalle del panel. */

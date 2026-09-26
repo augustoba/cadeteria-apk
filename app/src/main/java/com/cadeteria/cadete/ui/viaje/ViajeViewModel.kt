@@ -8,7 +8,8 @@ import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.data.remote.dto.RutaResponseDto
 import com.cadeteria.cadete.data.remote.mensajeDelServidor
-import com.cadeteria.cadete.location.ubicacionActual
+import com.cadeteria.cadete.location.UbicacionMarcada
+import com.cadeteria.cadete.location.ubicacionPrecisa
 import com.cadeteria.cadete.util.Validaciones
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -124,7 +125,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         val id = _uiState.value.viaje?.id ?: return
         _uiState.value = _uiState.value.copy(enviando = true, error = null)
         viewModelScope.launch {
-            val ubicacion = ubicacionActual(app)
+            val ubicacion = ubicacionPrecisa(app)
             if (foto == null) {
                 ejecutarRetirado(id, fotoUrl = null, fotoPathLocal = null, ubicacion = ubicacion)
                 return@launch
@@ -147,8 +148,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         }
     }
 
-    private suspend fun ejecutarRetirado(id: String, fotoUrl: String?, fotoPathLocal: String?, ubicacion: Pair<Double, Double>?) {
-        app.pedidoRepository.marcarRetirado(id, fotoUrl, ubicacion?.first, ubicacion?.second)
+    private suspend fun ejecutarRetirado(id: String, fotoUrl: String?, fotoPathLocal: String?, ubicacion: UbicacionMarcada?) {
+        app.pedidoRepository.marcarRetirado(id, fotoUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM)
             .onSuccess { _uiState.value = _uiState.value.copy(enviando = false, viaje = it) }
             .onFailure { e ->
                 if (e is java.io.IOException) {
@@ -159,8 +160,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             }
     }
 
-    private suspend fun encolarRetiradoOffline(id: String, fotoUrl: String?, fotoPathLocal: String?, ubicacion: Pair<Double, Double>?) {
-        app.pendingActionsRepository.encolarRetirado(id, fotoUrl, fotoPathLocal, ubicacion?.first, ubicacion?.second)
+    private suspend fun encolarRetiradoOffline(id: String, fotoUrl: String?, fotoPathLocal: String?, ubicacion: UbicacionMarcada?) {
+        app.pendingActionsRepository.encolarRetirado(id, fotoUrl, fotoPathLocal, ubicacion?.lat, ubicacion?.lng)
         _uiState.value = _uiState.value.copy(enviando = false, retiradoEncolado = true)
     }
 
@@ -178,7 +179,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         }
         _uiState.value = _uiState.value.copy(enviando = true, error = null)
         viewModelScope.launch {
-            val ubicacion = ubicacionActual(app)
+            val ubicacion = ubicacionPrecisa(app)
             if (foto == null && firma == null) {
                 ejecutarFinalizar(id, receptorNombre, null, null, null, null, ubicacion)
                 return@launch
@@ -228,9 +229,9 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         fotoPathLocal: String?,
         firmaUrl: String?,
         firmaPathLocal: String?,
-        ubicacion: Pair<Double, Double>?,
+        ubicacion: UbicacionMarcada?,
     ) {
-        app.pedidoRepository.finalizar(id, receptorNombre, fotoUrl, firmaUrl, ubicacion?.first, ubicacion?.second)
+        app.pedidoRepository.finalizar(id, receptorNombre, fotoUrl, firmaUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM)
             .onSuccess {
                 val quedanActivos = app.pedidoRepository.viajesActivos().getOrNull()?.isNotEmpty() ?: true
                 _uiState.value = _uiState.value.copy(
@@ -256,10 +257,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         fotoPathLocal: String?,
         firmaUrl: String?,
         firmaPathLocal: String?,
-        ubicacion: Pair<Double, Double>?,
+        ubicacion: UbicacionMarcada?,
     ) {
         app.pendingActionsRepository.encolarFinalizar(
-            id, receptorNombre, fotoUrl, fotoPathLocal, firmaUrl, firmaPathLocal, ubicacion?.first, ubicacion?.second,
+            id, receptorNombre, fotoUrl, fotoPathLocal, firmaUrl, firmaPathLocal, ubicacion?.lat, ubicacion?.lng,
         )
         _uiState.value = _uiState.value.copy(enviando = false, finalizarEncolado = true)
     }
