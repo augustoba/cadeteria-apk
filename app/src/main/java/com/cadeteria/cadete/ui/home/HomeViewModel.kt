@@ -21,6 +21,8 @@ data class HomeUiState(
     val cadete: CadeteDto? = null,
     /** Sección "Asignados y en curso" — puede haber más de uno si el tope de viajes lo permite. */
     val activos: List<PedidoDto> = emptyList(),
+    /** Incidente por reclamo de un cliente: mientras esté abierto no le llegan pedidos (2026-09-26). */
+    val incidenteAbierto: com.cadeteria.cadete.data.remote.dto.IncidenteAbiertoDto? = null,
     val error: String? = null,
     val cambiandoEstado: Boolean = false,
     /** Popup "Bienvenido {nombre}, tenés $X de saldo" al entrar — solo cadetes PORCENTAJE. */
@@ -143,7 +145,9 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
             _uiState.value = _uiState.value.copy(cargando = true, error = null)
             val perfil = app.cadeteRepository.miPerfil()
             val activos = app.pedidoRepository.viajesActivos()
+            val incidente = app.cadeteRepository.incidenteAbierto().getOrNull()
             _uiState.value = _uiState.value.copy(
+                incidenteAbierto = incidente,
                 cargando = false,
                 cadete = perfil.getOrNull(),
                 // El asignado sin aceptar (PENDIENTE) va primero — tiene tiempo límite para

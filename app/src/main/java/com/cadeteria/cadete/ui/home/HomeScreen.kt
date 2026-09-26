@@ -213,6 +213,17 @@ fun HomeScreen(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                // Reclamo de un cliente sin cerrar (2026-09-26): explica por qué no le llegan pedidos.
+                state.incidenteAbierto?.let { inc ->
+                    BannerError(
+                        "Tenés un incidente abierto por un reclamo del pedido N° ${inc.pedidoNumero ?: "-"}: no vas a " +
+                            "recibir pedidos hasta que se resuelva. Comunicate con el cliente. " +
+                            (inc.detalle ?: ""),
+                        Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 EstadoCard(
                     estadoId = state.cadete?.estado?.id ?: EstadoCadete.DESCONECTADO,
                     cambiando = state.cambiandoEstado,

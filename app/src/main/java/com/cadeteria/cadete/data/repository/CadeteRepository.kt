@@ -17,6 +17,12 @@ class CadeteRepository(private val retrofitProvider: RetrofitProvider) {
 
     suspend fun miPerfil(): Result<CadeteDto> = runCatching { retrofitProvider.apiService().miPerfil() }
 
+    /** Incidente por reclamo que lo tiene sin recibir pedidos — null si no tiene (2026-09-26). */
+    suspend fun incidenteAbierto(): Result<com.cadeteria.cadete.data.remote.dto.IncidenteAbiertoDto?> = runCatching {
+        val r = retrofitProvider.apiService().incidenteAbierto()
+        if (r.code() == 204) null else r.body()
+    }
+
     suspend fun miConfiguracion(): Result<CadeteConfigDto> =
         runCatching { retrofitProvider.apiService().miConfiguracion() }
 

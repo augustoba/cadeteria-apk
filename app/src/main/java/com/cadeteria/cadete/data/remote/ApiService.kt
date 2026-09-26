@@ -35,6 +35,10 @@ interface ApiService {
     @GET("api/cadetes/me/pago-semanal")
     suspend fun miPagoSemanal(): MiSemanaDto
 
+    /** 204 si no tiene ninguno — por eso Response (Retrofit no puede convertir un cuerpo vacío). */
+    @GET("api/cadetes/me/incidente-abierto")
+    suspend fun incidenteAbierto(): retrofit2.Response<IncidenteAbiertoDto>
+
     /** Avisos generales que todavía no vio — para no perderse los que llegaron desconectado (ronda 10, punto 98). */
     @GET("api/cadetes/me/avisos/pendientes")
     suspend fun avisosPendientes(): List<AvisoGeneralDto>

@@ -85,6 +85,12 @@ data class CadeteConfigDto(
     val urlSeguimientoBase: String = "",
 )
 
+/** Incidente por reclamo de un cliente que tiene bloqueado al cadete (GET /api/cadetes/me/incidente-abierto). */
+data class IncidenteAbiertoDto(
+    val pedidoNumero: Long?,
+    val detalle: String?,
+)
+
 /** Espeja PagoSemanalDtos.MiSemanaResponse (GET /api/cadetes/me/pago-semanal). */
 data class MiSemanaDto(
     val semanaInicio: String,
