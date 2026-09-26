@@ -34,6 +34,12 @@ object NotificationHelper {
     const val CANAL_UBICACION = "ubicacion"
     /** Recordatorio cada 30 min en DESCONECTADO/OCUPADO — sonido normal, no el ringtone de los viajes. */
     const val CANAL_RECORDATORIOS = "recordatorios"
+    /**
+     * "Llegaste al retiro / a la entrega, no te olvides de marcarlo" (2026-09-26, ver
+     * location/AvisoLlegada): importancia alta con el sonido normal de notificación — tiene que
+     * notarse con el celular en el bolsillo, pero no es un viaje nuevo (no el ringtone largo).
+     */
+    const val CANAL_LLEGADAS = "llegadas"
 
     private val PATRON_VIBRACION = longArrayOf(0, 500, 250, 500, 250, 500)
 
@@ -71,6 +77,16 @@ object NotificationHelper {
 
         manager.createNotificationChannel(ubicacion)
         manager.createNotificationChannel(recordatorios)
+        val llegadas = NotificationChannel(CANAL_LLEGADAS, "Llegada al retiro o entrega", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Te recuerda marcar Retirado o Entregado cuando llegás a la dirección."
+            enableVibration(true)
+            vibrationPattern = PATRON_VIBRACION
+        }
+        manager.createNotificationChannel(llegadas)
+    }
+
+    fun cancelar(context: Context, id: Int) {
+        NotificationManagerCompat.from(context).cancel(id)
     }
 
     const val EXTRA_DESTINO = "destino"
