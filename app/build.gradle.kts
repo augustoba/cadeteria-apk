@@ -113,6 +113,9 @@ dependencies {
     // Carga de imágenes (foto de perfil/vehículo, vienen de Cloudinary)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // QR del viaje (2026-09-25): el cliente lo escanea para confirmar que es el cadete asignado.
+    implementation("com.google.zxing:core:3.5.3")
+
     // Widget de pantalla de inicio para activarse/desactivarse sin abrir la app (mejora 2026-09-16)
     implementation("androidx.glance:glance-appwidget:1.1.1")
 

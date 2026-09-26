@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.AlertDialog
@@ -320,7 +321,25 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
             // está en curso: antes de aceptar todavía no es suyo, y una vez finalizado ya no
             // tiene motivo para contactarlo.
             val puedeContactarCliente = viaje.estado.id == EstadoPedido.EN_CURSO
+            var mostrarQr by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // QR del viaje (2026-09-25): el cliente lo escanea con la cámara, le abre el
+                // seguimiento del pedido con la foto y los datos del cadete, y confirma que es él.
+                if (puedeContactarCliente && state.urlSeguimientoBase.isNotBlank()) {
+                    BotonAccion(
+                        texto = "Mostrar QR al cliente",
+                        icono = Icons.Filled.QrCode2,
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = { mostrarQr = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (mostrarQr) {
+                    QrClienteDialog(
+                        link = state.urlSeguimientoBase + viaje.tokenSeguimiento,
+                        onDismiss = { mostrarQr = false },
+                    )
+                }
                 if (puedeContactarCliente) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         BotonAccion(
@@ -1024,3 +1043,42 @@ private fun guardarBitmapTemporal(context: android.content.Context, bitmap: Bitm
     return archivo
 }
 
+/**
+ * QR con el link de seguimiento del pedido (2026-09-25): el cliente lo escanea con la cámara del
+ * celular y ve la foto, el nombre, el DNI y la patente del cadete asignado — así confirma que es
+ * de la cadetería antes de entregarle el pedido, dinero o valores.
+ */
+@Composable
+private fun QrClienteDialog(link: String, onDismiss: () -> Unit) {
+    val qr = remember(link) { generarQr(link, 720) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        title = { Text("Mostrale este QR al cliente") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (qr != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = qr,
+                        contentDescription = "QR del pedido",
+                        modifier = Modifier.size(260.dp),
+                    )
+                }
+                Text(
+                    "Lo escanea con la cámara del celular y ve tus datos, para confirmar que sos el cadete asignado.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Gray500,
+                )
+            }
+        },
+    )
+}
+
+private fun generarQr(texto: String, tamano: Int): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
+    val matriz = com.google.zxing.qrcode.QRCodeWriter()
+        .encode(texto, com.google.zxing.BarcodeFormat.QR_CODE, tamano, tamano, mapOf(com.google.zxing.EncodeHintType.MARGIN to 1))
+    val pixeles = IntArray(tamano * tamano) { i ->
+        if (matriz.get(i % tamano, i / tamano)) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+    }
+    android.graphics.Bitmap.createBitmap(pixeles, tamano, tamano, android.graphics.Bitmap.Config.RGB_565).asImageBitmap()
+}.getOrNull()

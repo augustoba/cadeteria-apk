@@ -42,6 +42,8 @@ data class ViajeUiState(
     val fotoEntregaObligatoria: Boolean = true,
     /** Para la cuenta regresiva real al ofrecer un viaje nuevo (auditoría UX 2026-09-13). */
     val tiempoLimiteAceptacionSeg: Int = 120,
+    /** Base del link de seguimiento, para el QR que se le muestra al cliente (2026-09-25). */
+    val urlSeguimientoBase: String = "",
 )
 
 class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) : ViewModel() {
@@ -59,6 +61,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                     fotoRetiroObligatoria = it.fotoRetiroObligatoria,
                     fotoEntregaObligatoria = it.fotoEntregaObligatoria,
                     tiempoLimiteAceptacionSeg = it.tiempoLimiteAceptacionSeg,
+                    urlSeguimientoBase = it.urlSeguimientoBase,
                 )
             }
         }

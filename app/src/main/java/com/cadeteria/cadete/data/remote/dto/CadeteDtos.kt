@@ -81,6 +81,8 @@ data class CadeteConfigDto(
     /** Fotos configurables desde el panel (spec mejoras visuales §6) — se piden antes de intentar. */
     val fotoRetiroObligatoria: Boolean = false,
     val fotoEntregaObligatoria: Boolean = true,
+    /** "https://.../seguimiento/" — más el token del pedido es el link del QR para el cliente. */
+    val urlSeguimientoBase: String = "",
 )
 
 /** Espeja PagoSemanalDtos.MiSemanaResponse (GET /api/cadetes/me/pago-semanal). */
