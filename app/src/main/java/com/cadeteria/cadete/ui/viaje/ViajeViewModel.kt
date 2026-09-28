@@ -8,7 +8,6 @@ import com.cadeteria.cadete.data.remote.dto.EstadoCadete
 import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.MarcaEnLugar
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
-import com.cadeteria.cadete.data.remote.dto.RutaResponseDto
 import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.location.ControlEnLugar
 import com.cadeteria.cadete.location.UbicacionMarcada
@@ -29,7 +28,6 @@ data class FueraDeZona(val mensaje: String, val tieneFoto: Boolean)
 data class ViajeUiState(
     val cargando: Boolean = true,
     val viaje: PedidoDto? = null,
-    val ruta: RutaResponseDto? = null,
     val enviando: Boolean = false,
     val error: String? = null,
     /** true cuando el viaje se cerró (finalizado/quitado/cancelado) — la pantalla se puede cerrar. */
@@ -108,14 +106,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             _uiState.value = _uiState.value.copy(cargando = true, error = null)
             val res = app.pedidoRepository.detalle(pedidoId)
             val viaje = res.getOrNull()
+            // Sin pedir la ruta (2026-09-28): el mini mapa muestra solo los pines, el camino lo arma Maps/Waze.
             _uiState.value = _uiState.value.copy(cargando = false, viaje = viaje, terminado = viaje == null)
-            if (viaje != null) cargarRuta(viaje.id)
-        }
-    }
-
-    private fun cargarRuta(id: String) {
-        viewModelScope.launch {
-            app.pedidoRepository.ruta(id).onSuccess { r -> _uiState.value = _uiState.value.copy(ruta = r) }
         }
     }
 
@@ -126,7 +118,6 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             app.pedidoRepository.aceptar(id)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(viaje = it, enviando = false, preguntarSiQuedaOcupado = true)
-                    cargarRuta(id)
                 }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(

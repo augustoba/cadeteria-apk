@@ -113,7 +113,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.util.BoundingBox
 import java.io.File
 import java.io.FileOutputStream
 
@@ -233,7 +233,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
 
-            MapaViaje(viaje, state.ruta?.features?.firstOrNull()?.geometry?.coordinates)
+            MapaViaje(viaje)
             Spacer(Modifier.height(16.dp))
 
             // Reclamo del cliente desde la página de seguimiento (2026-09-25): queda en el viaje, no
@@ -967,7 +967,7 @@ private fun pinDrawable(color: Int, sizePx: Int = 36): ShapeDrawable =
     }
 
 @Composable
-private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
+private fun MapaViaje(viaje: PedidoDto) {
     val context = LocalContext.current
     // Mismos colores que ya usa la fila Origen/Destino de arriba (FilaInfo) — naranja de
     // marca para retiro, rojo para entrega — más azul para la posición del cadete, para que
@@ -1010,31 +1010,38 @@ private fun MapaViaje(viaje: PedidoDto, ruta: List<List<Double>>?) {
                 title = "Destino"
             })
 
-            var centro = destino
-            if (!ruta.isNullOrEmpty()) {
-                val puntos = ruta.map { GeoPoint(it[1], it[0]) } // ORS = [lng, lat]
-                map.overlays.add(Polyline(map).apply { setPoints(puntos) })
-                centro = puntos.first()
-            } else try {
+            // Solo los pines, sin el camino dibujado (2026-09-28, pedido del usuario): el camino lo
+            // arma Maps/Waze al navegar y el dibujado podía no coincidir. Se encuadran los 3 pines.
+            encuadrar(map, listOf(origen, destino))
+            try {
                 LocationServices.getFusedLocationProviderClient(context).lastLocation
                     .addOnSuccessListener { loc ->
                         if (loc != null) {
+                            val vos = GeoPoint(loc.latitude, loc.longitude)
                             map.overlays.add(Marker(map).apply {
-                                position = GeoPoint(loc.latitude, loc.longitude)
+                                position = vos
                                 icon = pinDrawable(colorCadete)
                                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                                 title = "Vos"
                             })
-                            map.invalidate()
+                            encuadrar(map, listOf(origen, destino, vos))
                         }
                     }
             } catch (e: SecurityException) {
                 // Sin permiso de ubicación todavía — el mapa igual muestra origen y destino.
             }
-            map.controller.setCenter(centro)
-            map.invalidate()
         },
     )
+}
+
+/** Zoom para que se vean todos los pines, con margen. post: el mapa recién creado todavía no tiene tamaño. */
+private fun encuadrar(map: MapView, puntos: List<GeoPoint>) {
+    map.post {
+        val caja = BoundingBox.fromGeoPointsSafe(puntos).increaseByScale(1.4f)
+        map.zoomToBoundingBox(caja, false)
+        if (map.zoomLevelDouble > 17.0) map.controller.setZoom(17.0)
+        map.invalidate()
+    }
 }
 
 /**
