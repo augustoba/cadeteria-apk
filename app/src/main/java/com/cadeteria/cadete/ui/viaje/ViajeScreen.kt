@@ -378,13 +378,24 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
+            state.fueraDeZona?.let { fuera ->
+                FueraDeZonaCard(
+                    fuera = fuera,
+                    onEstoyEnElLugar = { foto -> vm.estoyEnElLugar(foto) },
+                    onCancelar = vm::cancelarFueraDeZona,
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
             when (viaje.estado.id) {
                 // El bloque Aceptar/Rechazar de este estado vive en el bottomBar (ver arriba).
                 EstadoPedido.PENDIENTE -> {}
-                EstadoPedido.EN_CURSO -> AccionesEnCurso(
+                EstadoPedido.EN_CURSO -> if (state.fueraDeZona == null) AccionesEnCurso(
                     viaje = viaje,
                     yaRetirado = yaRetirado,
                     enviando = state.enviando,
+                    buscandoUbicacion = state.buscandoUbicacion,
+                    paradasEncoladas = state.paradasEncoladas,
                     onMarcarRetirado = { foto -> vm.marcarRetirado(foto) },
                     onParadaEntregadaClick = { paradaId -> vm.marcarParadaEntregada(paradaId) },
                     onFinalizarClick = { mostrarFinalizar = true },
@@ -558,11 +569,59 @@ private fun ComentarioDialog(enviando: Boolean, onDismiss: () -> Unit, onConfirm
     )
 }
 
+/**
+ * El control "en el lugar" no dejó marcar (2026-09-28): explica por qué y ofrece "Estoy en el lugar",
+ * que pide una foto (salvo que la acción ya la tuviera) y marca igual — queda "fuera de zona".
+ */
+@Composable
+private fun FueraDeZonaCard(fuera: FueraDeZona, onEstoyEnElLugar: (File?) -> Unit, onCancelar: () -> Unit) {
+    val context = LocalContext.current
+    var archivoFoto by remember { mutableStateOf<File?>(null) }
+    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        if (exito) archivoFoto?.let(onEstoyEnElLugar)
+    }
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = Red50),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Red600),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("📍 No estás en el lugar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Red600)
+            Text(fuera.mensaje, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "Si marcás con \"Estoy en el lugar\" queda registrado en el pedido (con la foto) y lo ve la administración.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Gray500,
+            )
+            Button(
+                onClick = {
+                    if (fuera.tieneFoto) {
+                        onEstoyEnElLugar(null)
+                    } else {
+                        val (archivo, uri) = crearArchivoFotoTemporal(context)
+                        archivoFoto = archivo
+                        tomarFoto.launch(uri)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text(if (fuera.tieneFoto) "📍 Estoy en el lugar" else "📍 Estoy en el lugar (sacar foto)", fontWeight = FontWeight.SemiBold)
+            }
+            OutlinedButton(onClick = onCancelar, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text("Volver (me acerco y pruebo de nuevo)")
+            }
+        }
+    }
+}
+
 @Composable
 private fun AccionesEnCurso(
     viaje: PedidoDto,
     yaRetirado: Boolean,
     enviando: Boolean,
+    buscandoUbicacion: Boolean,
+    paradasEncoladas: Set<String>,
     onMarcarRetirado: (File?) -> Unit,
     onParadaEntregadaClick: (String) -> Unit,
     onFinalizarClick: () -> Unit,
@@ -579,11 +638,18 @@ private fun AccionesEnCurso(
     }
 
     if (enviando) {
-        CircularProgressIndicator()
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            CircularProgressIndicator()
+            if (buscandoUbicacion) {
+                Spacer(Modifier.width(12.dp))
+                // Sin datos móviles el GPS anda igual, pero tarda más en ubicarse.
+                Text("Buscando tu ubicación…", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         return
     }
 
-    val paradasPendientes = viaje.paradas.filter { it.entregadoEn == null }
+    val paradasPendientes = viaje.paradas.filter { it.entregadoEn == null && it.id !in paradasEncoladas }
 
     Column {
         if (!yaRetirado) {
@@ -639,6 +705,8 @@ private fun AccionesEnCurso(
                     Text("${parada.orden}. ${parada.direccion}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     if (parada.entregadoEn != null) {
                         Text("✅", style = MaterialTheme.typography.bodyMedium)
+                    } else if (parada.id in paradasEncoladas) {
+                        Text("📶 ✅", style = MaterialTheme.typography.bodyMedium)
                     } else if (yaRetirado) {
                         OutlinedButton(
                             onClick = { onParadaEntregadaClick(parada.id) },
@@ -652,13 +720,20 @@ private fun AccionesEnCurso(
 
         Button(
             onClick = onFinalizarClick,
-            enabled = paradasPendientes.isEmpty(),
+            // 2026-09-28: no se puede entregar sin haber retirado (el backend también lo controla).
+            enabled = yaRetirado && paradasPendientes.isEmpty(),
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
         ) {
             Text("✅ Finalizar viaje", fontWeight = FontWeight.SemiBold)
         }
-        if (paradasPendientes.isNotEmpty()) {
+        if (!yaRetirado) {
+            Text(
+                "Primero marcá Retirado.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else if (paradasPendientes.isNotEmpty()) {
             Text(
                 "Marcá todas las paradas como entregadas antes de finalizar.",
                 style = MaterialTheme.typography.bodySmall,

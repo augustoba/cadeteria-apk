@@ -5,7 +5,9 @@ import com.cadeteria.cadete.data.remote.dto.ComentarioRequest
 import com.cadeteria.cadete.data.remote.dto.ReporteClienteRequest
 import com.cadeteria.cadete.data.remote.dto.FinalizarRequest
 import com.cadeteria.cadete.data.remote.dto.HistorialDto
+import com.cadeteria.cadete.data.remote.dto.MarcaEnLugar
 import com.cadeteria.cadete.data.remote.dto.NoEntregadoRequest
+import com.cadeteria.cadete.data.remote.dto.ParadaEntregadaRequest
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.data.remote.dto.RecepcionRequest
 import com.cadeteria.cadete.data.remote.dto.RechazarRequest
@@ -56,10 +58,15 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         precision: Float? = null,
         calleDetectada: String? = null,
         localidadDetectada: String? = null,
+        marca: MarcaEnLugar? = null,
     ): Result<PedidoDto> =
         runCatching {
             retrofitProvider.apiService().marcarRetirado(
-                id, RecepcionRequest(fotoUrl, lat, lng, archivoPerdido, precision, calleDetectada, localidadDetectada),
+                id,
+                RecepcionRequest(
+                    fotoUrl, lat, lng, archivoPerdido, precision, calleDetectada, localidadDetectada,
+                    marca?.tocadoEn, marca?.enElLugar, marca?.ubicacionSimulada,
+                ),
             )
         }
 
@@ -74,11 +81,15 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         precision: Float? = null,
         calleDetectada: String? = null,
         localidadDetectada: String? = null,
+        marca: MarcaEnLugar? = null,
     ): Result<PedidoDto> =
         runCatching {
             retrofitProvider.apiService().finalizarViaje(
                 id,
-                FinalizarRequest(receptorNombre, fotoUrl, firmaUrl, lat, lng, archivoPerdido, precision, calleDetectada, localidadDetectada),
+                FinalizarRequest(
+                    receptorNombre, fotoUrl, firmaUrl, lat, lng, archivoPerdido, precision, calleDetectada, localidadDetectada,
+                    marca?.tocadoEn, marca?.enElLugar, marca?.ubicacionSimulada,
+                ),
             )
         }
 
@@ -87,8 +98,21 @@ class PedidoRepository(private val retrofitProvider: RetrofitProvider) {
         runCatching { retrofitProvider.apiService().marcarNoEntregado(id, NoEntregadoRequest(motivo)) }
 
     /** Marca una parada intermedia como entregada (repartos con varias entregas en la misma vuelta). */
-    suspend fun marcarParadaEntregada(id: String, paradaId: String): Result<PedidoDto> =
-        runCatching { retrofitProvider.apiService().marcarParadaEntregada(id, paradaId) }
+    suspend fun marcarParadaEntregada(
+        id: String,
+        paradaId: String,
+        lat: Double? = null,
+        lng: Double? = null,
+        precision: Float? = null,
+        fotoUrl: String? = null,
+        marca: MarcaEnLugar? = null,
+    ): Result<PedidoDto> =
+        runCatching {
+            retrofitProvider.apiService().marcarParadaEntregada(
+                id, paradaId,
+                ParadaEntregadaRequest(lat, lng, precision, marca?.tocadoEn, marca?.enElLugar, marca?.ubicacionSimulada, fotoUrl),
+            )
+        }
 
     /** null si no se pudo calcular (sin ubicación propia todavía, o ORS sin configurar) — nunca falla. */
     suspend fun ruta(id: String): Result<RutaResponseDto?> =

@@ -230,6 +230,23 @@ private fun PedidoFinalizadoCard(pedido: PedidoDto, onClick: () -> Unit) {
                     MiniEvento(Icons.Filled.Inventory2, horaCorta(pedido.retiradoEn), Amber500)
                     MiniEvento(Icons.Filled.DoneAll, horaCorta(pedido.finalizadoEn), Emerald600)
                 }
+                // 2026-09-28: lo cerró la administración desde el panel, no el cadete.
+                if (!pedido.finalizadoPorAdmin.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "🛠 Finalizado por el admin" + (pedido.finalizadoAdminMotivo?.let { ": $it" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Amber500,
+                    )
+                }
+                if (pedido.retiroFueraZona == true || pedido.entregaFueraZona == true) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "📍 Marcado con \"Estoy en el lugar\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Gray500,
+                    )
+                }
                 // Reclamo del cliente (2026-09-25): tocar la tarjeta abre el viaje con el detalle.
                 if (!pedido.reclamoDetalle.isNullOrBlank()) {
                     Spacer(Modifier.height(6.dp))

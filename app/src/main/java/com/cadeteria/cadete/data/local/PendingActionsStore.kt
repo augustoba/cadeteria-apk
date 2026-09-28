@@ -24,6 +24,13 @@ data class FinalizarPendiente(
     val firmaPathLocal: String?,
     val lat: Double?,
     val lng: Double?,
+    /**
+     * Control "en el lugar" (2026-09-28): hora del toque (ISO UTC), precisión del GPS y si usó
+     * "Estoy en el lugar". Nullable: lo encolado por la versión anterior no los tiene (Gson deja null).
+     */
+    val tocadoEn: String? = null,
+    val precision: Float? = null,
+    val enElLugar: Boolean? = null,
 )
 
 /** Mismo caso que FinalizarPendiente pero para el botón "Marcar como retirado" (ronda 3, punto 24). */
@@ -33,6 +40,22 @@ data class RetiradoPendiente(
     val fotoPathLocal: String?,
     val lat: Double?,
     val lng: Double?,
+    val tocadoEn: String? = null,
+    val precision: Float? = null,
+    val enElLugar: Boolean? = null,
+)
+
+/** Parada entregada sin señal (2026-09-28): antes la parada no se encolaba (y no mandaba posición). */
+data class ParadaPendiente(
+    val pedidoId: String,
+    val paradaId: String,
+    val fotoUrl: String?,
+    val fotoPathLocal: String?,
+    val lat: Double?,
+    val lng: Double?,
+    val tocadoEn: String?,
+    val precision: Float?,
+    val enElLugar: Boolean?,
 )
 
 /**
@@ -88,5 +111,28 @@ class PendingActionsStore(private val context: Context) {
     private fun leerDeRetiros(json: String?): List<RetiradoPendiente> {
         if (json.isNullOrBlank()) return emptyList()
         return runCatching { gson.fromJson<List<RetiradoPendiente>>(json, tipoListaRetiros) }.getOrDefault(emptyList())
+    }
+
+    private val keyParadas = stringPreferencesKey("paradas_pendientes")
+    private val tipoListaParadas = object : TypeToken<List<ParadaPendiente>>() {}.type
+
+    suspend fun agregarParada(item: ParadaPendiente) {
+        context.pendingActionsDataStore.edit { prefs ->
+            val actuales = leerDeParadas(prefs[keyParadas]).filter { it.paradaId != item.paradaId }
+            prefs[keyParadas] = gson.toJson(actuales + item)
+        }
+    }
+
+    suspend fun listarParadas(): List<ParadaPendiente> = leerDeParadas(context.pendingActionsDataStore.data.first()[keyParadas])
+
+    suspend fun quitarParada(paradaId: String) {
+        context.pendingActionsDataStore.edit { prefs ->
+            prefs[keyParadas] = gson.toJson(leerDeParadas(prefs[keyParadas]).filter { it.paradaId != paradaId })
+        }
+    }
+
+    private fun leerDeParadas(json: String?): List<ParadaPendiente> {
+        if (json.isNullOrBlank()) return emptyList()
+        return runCatching { gson.fromJson<List<ParadaPendiente>>(json, tipoListaParadas) }.getOrDefault(emptyList())
     }
 }

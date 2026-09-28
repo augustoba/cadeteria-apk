@@ -94,6 +94,12 @@ data class CadeteConfigDto(
     val fotoEntregaObligatoria: Boolean = true,
     /** "https://.../seguimiento/" — más el token del pedido es el link del QR para el cliente. */
     val urlSeguimientoBase: String = "",
+    /**
+     * Retirado/Entregado solo en el lugar (2026-09-28): radio alrededor del punto y error del GPS a
+     * partir del cual la ubicación es imprecisa. 0 = backend viejo que no los manda (se usa el default).
+     */
+    val enLugarRadioM: Int = 0,
+    val enLugarPrecisionMaxM: Int = 0,
 )
 
 /** Incidente por reclamo de un cliente que tiene bloqueado al cadete (GET /api/cadetes/me/incidente-abierto). */

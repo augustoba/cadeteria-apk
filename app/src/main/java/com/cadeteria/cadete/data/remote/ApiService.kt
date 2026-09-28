@@ -116,7 +116,11 @@ interface ApiService {
 
     /** Marca una parada intermedia como entregada (repartos con varias entregas en la misma vuelta). */
     @POST("api/pedidos/me/{id}/paradas/{paradaId}/entregada")
-    suspend fun marcarParadaEntregada(@Path("id") id: String, @Path("paradaId") paradaId: String): PedidoDto
+    suspend fun marcarParadaEntregada(
+        @Path("id") id: String,
+        @Path("paradaId") paradaId: String,
+        @Body req: com.cadeteria.cadete.data.remote.dto.ParadaEntregadaRequest,
+    ): PedidoDto
 
     @GET("api/pedidos/me/{id}/ruta")
     suspend fun ruta(@Path("id") id: String): RutaResponseDto

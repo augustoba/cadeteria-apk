@@ -55,6 +55,12 @@ data class PedidoDto(
     /** Último reclamo del cliente desde el seguimiento (2026-09-25) — null si no reclamó. */
     val reclamoDetalle: String? = null,
     val reclamoEn: String? = null,
+    /** Marcó con "Estoy en el lugar" lejos del punto (2026-09-28). */
+    val retiroFueraZona: Boolean? = null,
+    val entregaFueraZona: Boolean? = null,
+    /** Lo finalizó el admin desde el panel (no el cadete): quién y por qué. */
+    val finalizadoPorAdmin: String? = null,
+    val finalizadoAdminMotivo: String? = null,
 )
 
 /** Espeja PedidoDtos.ParadaResponse. */
@@ -65,6 +71,30 @@ data class ParadaDto(
     val lat: Double,
     val lng: Double,
     val entregadoEn: String?,
+)
+
+/**
+ * Control "en el lugar" al marcar Retirado, una parada o Entregado (2026-09-28). La app nueva
+ * siempre manda tocadoEn: así el backend la distingue de una APK vieja.
+ * - tocadoEn: cuándo se tocó el botón (ISO, UTC) — la cola sin señal lo manda después.
+ * - enElLugar: usó "Estoy en el lugar" (con foto) porque el control de distancia no lo dejaba.
+ * - ubicacionSimulada: la ubicación venía de una app de GPS falso.
+ */
+data class MarcaEnLugar(
+    val tocadoEn: String,
+    val enElLugar: Boolean = false,
+    val ubicacionSimulada: Boolean = false,
+)
+
+/** Parada intermedia entregada: body nuevo (2026-09-28), antes no mandaba nada. */
+data class ParadaEntregadaRequest(
+    val lat: Double?,
+    val lng: Double?,
+    val precision: Float?,
+    val tocadoEn: String?,
+    val enElLugar: Boolean? = null,
+    val ubicacionSimulada: Boolean? = null,
+    val fotoUrl: String? = null,
 )
 
 /** Botón "Retirado": la foto es opcional. lat/lng: ubicación del cadete en ese momento (opcional). */
@@ -79,6 +109,10 @@ data class RecepcionRequest(
     /** Calle/localidad según el Geocoder del teléfono en ese punto, para confirmar la dirección. */
     val calleDetectada: String? = null,
     val localidadDetectada: String? = null,
+    /** Control "en el lugar" (ver [MarcaEnLugar]). */
+    val tocadoEn: String? = null,
+    val enElLugar: Boolean? = null,
+    val ubicacionSimulada: Boolean? = null,
 )
 
 /** Botón "Rechazar": motivo opcional, texto libre (para detectar patrones en Métricas). */
@@ -100,6 +134,10 @@ data class FinalizarRequest(
     /** Calle/localidad según el Geocoder del teléfono en ese punto, para confirmar la dirección. */
     val calleDetectada: String? = null,
     val localidadDetectada: String? = null,
+    /** Control "en el lugar" (ver [MarcaEnLugar]). */
+    val tocadoEn: String? = null,
+    val enElLugar: Boolean? = null,
+    val ubicacionSimulada: Boolean? = null,
 )
 
 /** Nota de texto libre sobre el viaje (ej. "entregado en porteria a Fulano") — se ve en el detalle del panel. */

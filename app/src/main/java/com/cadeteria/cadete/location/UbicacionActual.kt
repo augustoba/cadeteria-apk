@@ -16,15 +16,27 @@ data class UbicacionMarcada(
     val precisionM: Float?,
     /** Calle según el Geocoder del teléfono (solo con buena precisión) — ayuda a confirmar la dirección. */
     val calle: CalleDetectada? = null,
+    /** La dio una app de ubicación simulada (GPS falso) — 2026-09-28: con esto no se deja marcar. */
+    val simulada: Boolean = false,
 )
+
+/** Última conocida que todavía sirve para decir "está en el lugar" (más vieja, el cadete pudo haberse movido). */
+private const val ULTIMA_CONOCIDA_MAX_MS = 2 * 60_000L
+
+/** Si la ubicación la inventó una app de GPS falso (API 31+ isMock, antes isFromMockProvider). */
+@Suppress("DEPRECATION")
+private fun android.location.Location.esSimulada(): Boolean =
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) isMock else isFromMockProvider
 
 /**
  * Lectura de GPS nueva y precisa para Retirado/Entregado (2026-09-26): con buena precisión el
  * backend aprende las coordenadas de esa dirección (la puerta real). Espera hasta [esperaMs] a que
- * el GPS fije; si no llega, usa la última conocida (puede ser vieja: su precisión lo dice).
+ * el GPS fije — sin datos móviles el GPS anda igual pero tarda más en ubicarse (2026-09-28: la
+ * pantalla muestra "Buscando tu ubicación…"). Si no llega, usa la última conocida solo si es de
+ * hace menos de 2 minutos; si no, null (el cadete puede usar "Estoy en el lugar").
  */
 @SuppressLint("MissingPermission")
-suspend fun ubicacionPrecisa(context: Context, esperaMs: Long = 8_000): UbicacionMarcada? {
+suspend fun ubicacionPrecisa(context: Context, esperaMs: Long = 30_000): UbicacionMarcada? {
     val client = LocationServices.getFusedLocationProviderClient(context)
     val fresca = withTimeoutOrNull(esperaMs) {
         suspendCancellableCoroutine<android.location.Location?> { cont ->
@@ -41,10 +53,29 @@ suspend fun ubicacionPrecisa(context: Context, esperaMs: Long = 8_000): Ubicacio
     }
     if (fresca != null) {
         val precision = if (fresca.hasAccuracy()) fresca.accuracy else null
-        val calle = if (precision != null && precision <= 50f) calleDelTelefono(context, fresca.latitude, fresca.longitude) else null
-        return UbicacionMarcada(fresca.latitude, fresca.longitude, precision, calle)
+        val simulada = fresca.esSimulada()
+        val calle = if (!simulada && precision != null && precision <= 50f) {
+            calleDelTelefono(context, fresca.latitude, fresca.longitude)
+        } else null
+        return UbicacionMarcada(fresca.latitude, fresca.longitude, precision, calle, simulada)
     }
-    return ubicacionActual(context)?.let { UbicacionMarcada(it.first, it.second, null) }
+    val ultima = ultimaConocida(context) ?: return null
+    if (System.currentTimeMillis() - ultima.time > ULTIMA_CONOCIDA_MAX_MS) return null
+    return UbicacionMarcada(
+        ultima.latitude, ultima.longitude, if (ultima.hasAccuracy()) ultima.accuracy else null,
+        simulada = ultima.esSimulada(),
+    )
+}
+
+@SuppressLint("MissingPermission")
+private suspend fun ultimaConocida(context: Context): android.location.Location? = suspendCancellableCoroutine { cont ->
+    try {
+        LocationServices.getFusedLocationProviderClient(context).lastLocation
+            .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+            .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+    } catch (e: SecurityException) {
+        if (cont.isActive) cont.resume(null)
+    }
 }
 
 /**
