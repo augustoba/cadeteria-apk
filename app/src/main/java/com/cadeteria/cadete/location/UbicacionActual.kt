@@ -29,6 +29,22 @@ private fun android.location.Location.esSimulada(): Boolean =
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) isMock else isFromMockProvider
 
 /**
+ * Ubicación para un "Aviso de la calle" (carril C, 2026-09-28): la última conocida si es de hace
+ * menos de 2 min y con error de hasta 100 m (lo normal con el servicio de ubicación prendido); si no,
+ * una nueva (hasta 15 s). null si no hay forma de ubicarse.
+ */
+@SuppressLint("MissingPermission")
+suspend fun ubicacionParaAviso(context: Context): UbicacionMarcada? {
+    val ultima = ultimaConocida(context)
+    if (ultima != null && System.currentTimeMillis() - ultima.time <= ULTIMA_CONOCIDA_MAX_MS &&
+        ultima.hasAccuracy() && ultima.accuracy <= 100f
+    ) {
+        return UbicacionMarcada(ultima.latitude, ultima.longitude, ultima.accuracy, simulada = ultima.esSimulada())
+    }
+    return ubicacionPrecisa(context, esperaMs = 15_000)
+}
+
+/**
  * Lectura de GPS nueva y precisa para Retirado/Entregado (2026-09-26): con buena precisión el
  * backend aprende las coordenadas de esa dirección (la puerta real). Espera hasta [esperaMs] a que
  * el GPS fije — sin datos móviles el GPS anda igual pero tarda más en ubicarse (2026-09-28: la

@@ -41,6 +41,14 @@ object NotificationHelper {
      */
     const val CANAL_LLEGADAS = "llegadas"
 
+    /**
+     * "Avisos de la calle" de otros cadetes (carril C, 2026-09-28): canal propio, así el cadete lo
+     * puede silenciar aparte. Sonido de notificación (no el ringtone largo de los viajes) y vibración
+     * distinta (dos toques cortos) para reconocerlo sin mirar.
+     */
+    const val CANAL_CALLE = "avisos_calle"
+    private val PATRON_VIBRACION_CALLE = longArrayOf(0, 150, 100, 150)
+
     private val PATRON_VIBRACION = longArrayOf(0, 500, 250, 500, 250, 500)
 
     fun crearCanales(context: Context) {
@@ -83,6 +91,19 @@ object NotificationHelper {
             vibrationPattern = PATRON_VIBRACION
         }
         manager.createNotificationChannel(llegadas)
+        val calle = NotificationChannel(CANAL_CALLE, "Avisos de la calle", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Controles, calles cortadas, accidentes o piquetes que avisan otros cadetes cerca tuyo."
+            enableVibration(true)
+            vibrationPattern = PATRON_VIBRACION_CALLE
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            )
+        }
+        manager.createNotificationChannel(calle)
     }
 
     fun cancelar(context: Context, id: Int) {

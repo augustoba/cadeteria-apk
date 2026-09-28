@@ -258,6 +258,15 @@ fun HomeScreen(
                     minutosConectado = state.minutosConectadoHoy,
                 )
 
+                Spacer(Modifier.height(12.dp))
+                AvisosCalleSeccion(
+                    avisos = state.avisosCalle,
+                    enviando = state.enviandoAvisoCalle,
+                    mensaje = state.mensajeAvisoCalle,
+                    onAvisar = vm::avisarCalle,
+                    onCerrarMensaje = vm::cerrarMensajeAvisoCalle,
+                )
+
                 Spacer(Modifier.height(24.dp))
                 Text(
                     "Asignados y en curso",

@@ -1,6 +1,7 @@
 package com.cadeteria.cadete.realtime
 
 import com.cadeteria.cadete.data.local.SessionManager
+import com.cadeteria.cadete.data.remote.dto.AvisoCalleDto
 import com.cadeteria.cadete.data.remote.dto.AvisoDto
 import com.cadeteria.cadete.data.remote.dto.EventoViajeDto
 import com.cadeteria.cadete.data.remote.dto.MensajeDto
@@ -36,6 +37,10 @@ class RealtimeManager(private val session: SessionManager) {
     /** Avisos generales del admin o recordatorios de demora (PedidoService.avisosDemora en el backend). */
     private val _avisos = MutableSharedFlow<AvisoDto>(extraBufferCapacity = 8)
     val avisos: SharedFlow<AvisoDto> = _avisos.asSharedFlow()
+
+    /** "Avisos de la calle" de otros cadetes cerca (carril C): canal propio, no se mezcla con [avisos]. */
+    private val _avisosCalle = MutableSharedFlow<AvisoCalleDto>(extraBufferCapacity = 8)
+    val avisosCalle: SharedFlow<AvisoCalleDto> = _avisosCalle.asSharedFlow()
 
     private val _conectado = MutableSharedFlow<Boolean>(replay = 1, extraBufferCapacity = 1)
     val conectado: SharedFlow<Boolean> = _conectado.asSharedFlow()
@@ -75,6 +80,10 @@ class RealtimeManager(private val session: SessionManager) {
             nuevo.subscribe("/queue/cadete/$cadeteId/avisos") { body ->
                 runCatching { gson.fromJson(body, AvisoDto::class.java) }
                     .onSuccess { _avisos.tryEmit(it) }
+            }
+            nuevo.subscribe("/queue/cadete/$cadeteId/calle") { body ->
+                runCatching { gson.fromJson(body, AvisoCalleDto::class.java) }
+                    .onSuccess { _avisosCalle.tryEmit(it) }
             }
         }
         nuevo.onDisconnected = {

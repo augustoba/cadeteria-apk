@@ -9,6 +9,7 @@ import com.cadeteria.cadete.data.remote.dto.EstadoCadete
 import com.cadeteria.cadete.data.remote.dto.EstadoPedido
 import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.push.NotificationHelper
 import com.cadeteria.cadete.widget.CadeteWidget
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,11 @@ data class HomeUiState(
     val viajesHoy: Int? = null,
     val facturadoHoy: Double? = null,
     val minutosConectadoHoy: Long? = null,
+    /** "Avisos de la calle" activos cerca (carril C, 2026-09-28): los que llegan en vivo y los pedidos al abrir. */
+    val avisosCalle: List<com.cadeteria.cadete.data.remote.dto.AvisoCalleDto> = emptyList(),
+    val enviandoAvisoCalle: Boolean = false,
+    /** Confirmación ("Avisaste: Control en …") o error del botón "Avisar" — se muestra y se cierra. */
+    val mensajeAvisoCalle: String? = null,
 )
 
 data class BienvenidaInfo(val nombre: String, val saldo: Double, val saldoBajo: Boolean)
@@ -56,6 +62,8 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
         escucharEventosDeViaje()
         escucharAvisos()
         escucharMensajesChat()
+        escucharAvisosCalle()
+        cargarAvisosCalleCerca()
         cargarAvisoFlotantePendiente()
         cargarAvisosPendientes()
         cargarBienvenidaSiCorresponde()
@@ -238,6 +246,8 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     if (nuevoEstado == EstadoCadete.DESCONECTADO) onLocationServiceStop() else onLocationServiceStart()
                     CadeteWidget.sincronizarEstado(app, actualizado.estado.id, actualizado.nombre)
                     app.recordatorioEstado.actualizar(actualizado.estado.id)
+                    // Al pasar a Libre, los avisos de la calle que llegaron mientras estaba desconectado.
+                    if (nuevoEstado == EstadoCadete.LIBRE) cargarAvisosCalleCerca()
                 }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -275,6 +285,69 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                         "Viaje cancelado", "Se canceló el pedido #${evento.pedido.numero}.",
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Botón "🚨 Avisar" (carril C, 2026-09-28): un toque, sin escribir nada. La ubicación y la hora
+     * se toman solas. Sin señal no se encola: un aviso de hace 20 min ya no sirve.
+     */
+    fun avisarCalle(tipo: String) {
+        if (_uiState.value.enviandoAvisoCalle) return
+        _uiState.value = _uiState.value.copy(enviandoAvisoCalle = true, mensajeAvisoCalle = null)
+        viewModelScope.launch {
+            val ubicacion = com.cadeteria.cadete.location.ubicacionParaAviso(app)
+            if (ubicacion == null) {
+                terminarAvisoCalle("No pudimos leer tu ubicación. Revisá que el GPS esté prendido.")
+                return@launch
+            }
+            if (ubicacion.simulada) {
+                terminarAvisoCalle("Tu celular está usando una ubicación simulada. Desactivá esa app para avisar.")
+                return@launch
+            }
+            runCatching {
+                app.retrofitProvider.apiService().avisarCalle(
+                    com.cadeteria.cadete.data.remote.dto.AvisoCalleRequest(tipo, ubicacion.lat, ubicacion.lng, ubicacion.precisionM),
+                )
+            }
+                .onSuccess { terminarAvisoCalle(AvisosCalleTexto.confirmacion(it)) }
+                .onFailure { e ->
+                    terminarAvisoCalle(
+                        if (e is java.io.IOException) "No se pudo mandar, no hay conexión."
+                        else e.mensajeDelServidor() ?: "No se pudo mandar el aviso.",
+                    )
+                }
+        }
+    }
+
+    private fun terminarAvisoCalle(mensaje: String) {
+        _uiState.value = _uiState.value.copy(enviandoAvisoCalle = false, mensajeAvisoCalle = mensaje)
+    }
+
+    fun cerrarMensajeAvisoCalle() {
+        _uiState.value = _uiState.value.copy(mensajeAvisoCalle = null)
+    }
+
+    /** "Avisos cerca tuyo" al abrir la app o al pasar a Libre: los activos a menos de 1 km. */
+    private fun cargarAvisosCalleCerca() {
+        viewModelScope.launch {
+            val ubicacion = com.cadeteria.cadete.location.ubicacionActual(app) ?: return@launch
+            runCatching { app.retrofitProvider.apiService().avisosCalleCerca(ubicacion.first, ubicacion.second) }
+                .onSuccess { lista -> _uiState.value = _uiState.value.copy(avisosCalle = lista.filter { AvisosCalleTexto.vigente(it) }) }
+        }
+    }
+
+    /** Aviso de otro cadete cerca, en vivo: notificación con su canal (sonido distinto) y a la lista. */
+    private fun escucharAvisosCalle() {
+        viewModelScope.launch {
+            app.realtimeManager.avisosCalle.collect { aviso ->
+                NotificationHelper.mostrar(
+                    app, NotificationHelper.CANAL_CALLE, aviso.id.hashCode(), "🚨 Aviso de la calle", AvisosCalleTexto.linea(aviso),
+                )
+                val lista = (listOf(aviso) + _uiState.value.avisosCalle.filter { it.id != aviso.id })
+                    .filter { AvisosCalleTexto.vigente(it) }
+                _uiState.value = _uiState.value.copy(avisosCalle = lista)
             }
         }
     }

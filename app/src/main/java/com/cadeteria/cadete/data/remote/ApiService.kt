@@ -51,6 +51,14 @@ interface ApiService {
     @GET("api/cadetes/me/avisos/historial")
     suspend fun historialAvisos(): List<AvisoHistorialDto>
 
+    /** "Avisos de la calle" (carril C, 2026-09-28): avisar algo que se vio en la calle. */
+    @POST("api/cadetes/me/avisos-calle")
+    suspend fun avisarCalle(@Body req: AvisoCalleRequest): AvisoCalleDto
+
+    /** Avisos de la calle activos cerca de un punto ("Avisos cerca tuyo"). */
+    @GET("api/cadetes/me/avisos-calle")
+    suspend fun avisosCalleCerca(@Query("lat") lat: Double, @Query("lng") lng: Double): List<AvisoCalleDto>
+
     @PATCH("api/cadetes/me/estado")
     suspend fun actualizarEstado(@Body req: EstadoRequest): CadeteDto
 
