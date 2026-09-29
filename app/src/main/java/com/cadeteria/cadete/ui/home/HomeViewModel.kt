@@ -28,10 +28,14 @@ data class HomeUiState(
     val cambiandoEstado: Boolean = false,
     /** Popup "Bienvenido {nombre}, tenés $X de saldo" al entrar — solo cadetes PORCENTAJE. */
     val bienvenida: BienvenidaInfo? = null,
-    /** Popup de recordatorios (documentación, seguridad, marcar retirado/finalizado) al entrar. */
-    val mostrarRecordatorios: Boolean = false,
-    /** Aviso general del admin, como banner flotante arriba (además de la notificación del
-     * sistema, que desaparece sola y no deja el mensaje visible en ningún lado). */
+    /** Cartel "Antes de arrancar" al entrar (textos de Configuración, 2026-09-29); null = no se muestra. */
+    val recordatorios: RecordatoriosCartel? = null,
+    /**
+     * Avisos generales del admin sin "Entendido" todavía, del más viejo al más nuevo (2026-09-29): se
+     * muestran de a uno en un cartel que no se cierra solo. "Entendido" es lo que los marca leídos.
+     */
+    val avisosGenerales: List<com.cadeteria.cadete.data.remote.dto.AvisoGeneralDto> = emptyList(),
+    /** Recordatorio de demora del sistema (no trae avisoId): banner arriba que se cierra solo. */
     val avisoFlotante: String? = null,
     /** Para la cuenta regresiva del viaje PENDIENTE en la tarjeta de "Asignados y en curso". */
     val tiempoLimiteAceptacionSeg: Int = 120,
@@ -105,13 +109,23 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
      */
     private fun cargarAvisosPendientes() {
         viewModelScope.launch {
-            app.cadeteRepository.avisosPendientes().getOrNull()?.forEach { aviso ->
-                NotificationHelper.mostrar(app, NotificationHelper.CANAL_VIAJES, aviso.mensaje.hashCode(), "Cadetería", aviso.mensaje)
-                app.cadeteRepository.marcarAvisoLeido(aviso.id)
-                _uiState.value = _uiState.value.copy(avisoFlotante = aviso.mensaje)
-                app.sessionManager.guardarAvisoFlotantePendiente(aviso.mensaje)
-            }
+            // Sin notificación: el cadete ya está mirando la app, le sale el cartel (2026-09-29).
+            val pendientes = app.cadeteRepository.avisosPendientes().getOrNull() ?: return@launch
+            _uiState.value = _uiState.value.copy(
+                avisosGenerales = CartelesInicio.encolar(_uiState.value.avisosGenerales, pendientes),
+            )
         }
+    }
+
+    /**
+     * "Entendido" del primer aviso de la cola: recién ahí queda leído (2026-09-29; antes se marcaba al
+     * llegar y el panel contaba como vistos avisos que nadie leyó). Si no hay señal, vuelve a salir la
+     * próxima vez que abra la app: mejor repetido que perdido.
+     */
+    fun entenderAvisoGeneral() {
+        val aviso = _uiState.value.avisosGenerales.firstOrNull() ?: return
+        _uiState.value = _uiState.value.copy(avisosGenerales = _uiState.value.avisosGenerales.drop(1))
+        viewModelScope.launch { app.cadeteRepository.marcarAvisoLeido(aviso.id) }
     }
 
     /** Bienvenida con saldo (a pedido del dueño) — solo para PORCENTAJE, que es el único modelo donde el saldo importa para poder laburar. */
@@ -133,14 +147,20 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
         _uiState.value = _uiState.value.copy(bienvenida = null)
     }
 
+    /** Una vez por login. Sin configuración (sin señal, backend viejo) salen los textos de siempre. */
     private fun cargarRecordatoriosSiCorresponde() {
         if (!app.mostrarRecordatoriosAlEntrar) return
         app.mostrarRecordatoriosAlEntrar = false
-        _uiState.value = _uiState.value.copy(mostrarRecordatorios = true)
+        viewModelScope.launch {
+            val config = app.cadeteRepository.miConfiguracion().getOrNull()
+            _uiState.value = _uiState.value.copy(recordatorios = CartelesInicio.recordatorios(config))
+        }
     }
 
-    fun cerrarRecordatorios() {
-        _uiState.value = _uiState.value.copy(mostrarRecordatorios = false)
+    /** "Entendido": queda en la ficha del cadete con lo que decía el cartel. Sin señal no se reintenta. */
+    fun entenderRecordatorios() {
+        _uiState.value = _uiState.value.copy(recordatorios = null)
+        viewModelScope.launch { runCatching { app.retrofitProvider.apiService().recordatoriosEntendido() } }
     }
 
     fun cerrarAvisoFlotante() {
@@ -359,13 +379,19 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
         viewModelScope.launch {
             app.realtimeManager.avisos.collect { aviso ->
                 NotificationHelper.mostrar(app, NotificationHelper.CANAL_VIAJES, aviso.mensaje.hashCode(), "Cadetería", aviso.mensaje)
+                // Aviso general del admin: al cartel con "Entendido", que es lo que lo marca leído.
+                if (aviso.avisoId != null) {
+                    val nuevo = com.cadeteria.cadete.data.remote.dto.AvisoGeneralDto(aviso.avisoId, aviso.mensaje)
+                    _uiState.value = _uiState.value.copy(
+                        avisosGenerales = CartelesInicio.encolar(_uiState.value.avisosGenerales, listOf(nuevo)),
+                    )
+                    return@collect
+                }
                 _uiState.value = _uiState.value.copy(avisoFlotante = aviso.mensaje)
                 // A disco, no solo en memoria: esto puede llegar con la app minimizada, y si el
                 // proceso muere antes de que el cadete vuelva a verla, el banner tiene que poder
                 // reconstruirse en el próximo arranque (ver cargarAvisoFlotantePendiente).
                 app.sessionManager.guardarAvisoFlotantePendiente(aviso.mensaje)
-                // Los recordatorios de demora no traen avisoId — solo se confirma lectura de avisos generales.
-                aviso.avisoId?.let { app.cadeteRepository.marcarAvisoLeido(it) }
             }
         }
     }

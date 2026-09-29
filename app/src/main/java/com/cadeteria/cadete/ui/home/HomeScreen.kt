@@ -149,20 +149,22 @@ fun HomeScreen(
         )
     }
 
-    if (state.mostrarRecordatorios) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = vm::cerrarRecordatorios,
-            title = { Text("Antes de arrancar") },
-            text = {
-                Column {
-                    Text("• Llevá toda la documentación en regla (DNI, licencia, cédula del vehículo, seguro).")
-                    Spacer(Modifier.height(8.dp))
-                    Text("• No te olvides los elementos de seguridad: casco, cadena y mochila.")
-                    Spacer(Modifier.height(8.dp))
-                    Text("• Marcá cada viaje como \"Retirado\" al levantar el pedido, y \"Finalizado\" con los datos correspondientes al entregarlo.")
-                }
-            },
-            confirmButton = { Button(onClick = vm::cerrarRecordatorios) { Text("Entendido") } },
+    // De a un cartel por vez (2026-09-29): primero la bienvenida, después los recordatorios y después
+    // los avisos generales del admin, uno atrás de otro.
+    val recordatorios = state.recordatorios
+    val aviso = state.avisosGenerales.firstOrNull()
+    if (state.bienvenida == null && recordatorios != null) {
+        com.cadeteria.cadete.ui.common.CartelEntendido(
+            titulo = recordatorios.titulo,
+            renglones = recordatorios.textos,
+            onEntendido = vm::entenderRecordatorios,
+        )
+    } else if (state.bienvenida == null && aviso != null) {
+        com.cadeteria.cadete.ui.common.CartelEntendido(
+            titulo = CartelesInicio.tituloAviso(state.avisosGenerales.size),
+            renglones = listOf(aviso.mensaje),
+            onEntendido = vm::entenderAvisoGeneral,
+            vinetas = false,
         )
     }
 

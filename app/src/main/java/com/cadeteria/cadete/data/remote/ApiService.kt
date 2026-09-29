@@ -47,6 +47,10 @@ interface ApiService {
     @POST("api/cadetes/me/avisos/{id}/leido")
     suspend fun marcarAvisoLeido(@Path("id") id: String)
 
+    /** "Entendido" en el cartel de recordatorios al entrar (2026-09-29): queda registrado en la ficha. */
+    @POST("api/cadetes/me/recordatorios/entendido")
+    suspend fun recordatoriosEntendido()
+
     /** Pantalla "Avisos" con historial (mejora 2026-09-16) — a diferencia de [avisosPendientes], incluye los ya leídos. */
     @GET("api/cadetes/me/avisos/historial")
     suspend fun historialAvisos(): List<AvisoHistorialDto>

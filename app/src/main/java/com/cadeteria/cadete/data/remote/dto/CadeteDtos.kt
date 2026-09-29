@@ -106,6 +106,13 @@ data class CadeteConfigDto(
      * no lo manda no tiene que apagar el control (null = prendido).
      */
     val enLugarControlActivo: Boolean? = null,
+    /**
+     * Cartel "Antes de arrancar" (2026-09-29), editable en Configuración. Nullables por lo mismo que
+     * arriba: null = backend viejo, se usan los textos de siempre (ver CartelesInicio).
+     */
+    val recordatoriosActivo: Boolean? = null,
+    val recordatoriosTitulo: String? = null,
+    val recordatoriosTextos: List<String>? = null,
 )
 
 /** Incidente por reclamo de un cliente que tiene bloqueado al cadete (GET /api/cadetes/me/incidente-abierto). */
