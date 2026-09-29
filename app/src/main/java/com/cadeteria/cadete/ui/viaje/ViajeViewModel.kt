@@ -62,6 +62,8 @@ data class ViajeUiState(
     /** Control "en el lugar": vienen de la configuración del backend (0 = backend viejo, van los defaults). */
     val enLugarRadioM: Int = ControlEnLugar.RADIO_M_DEFAULT,
     val enLugarPrecisionMaxM: Int = ControlEnLugar.PRECISION_MAX_M_DEFAULT,
+    /** Interruptor de Configuración: apagado, no se frena (solo el orden Retirado → Entregado). */
+    val enLugarControlActivo: Boolean = true,
 )
 
 class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) : ViewModel() {
@@ -96,6 +98,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                     urlSeguimientoBase = it.urlSeguimientoBase,
                     enLugarRadioM = it.enLugarRadioM.takeIf { r -> r > 0 } ?: ControlEnLugar.RADIO_M_DEFAULT,
                     enLugarPrecisionMaxM = it.enLugarPrecisionMaxM.takeIf { p -> p > 0 } ?: ControlEnLugar.PRECISION_MAX_M_DEFAULT,
+                    enLugarControlActivo = it.enLugarControlActivo != false,
                 )
             }
         }
@@ -197,8 +200,15 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         pendiente = null
         _uiState.value = _uiState.value.copy(enviando = true, buscandoUbicacion = true, error = null, fueraDeZona = null)
         viewModelScope.launch {
-            val ubicacion = ubicacionPrecisa(app)
+            val controlActivo = _uiState.value.enLugarControlActivo
+            // Con el control apagado no hace falta esperar tanto al GPS: la posición es solo un dato.
+            val ubicacion = ubicacionPrecisa(app, esperaMs = if (controlActivo) 30_000 else 8_000)
             _uiState.value = _uiState.value.copy(buscandoUbicacion = false)
+            if (!controlActivo) {
+                // Control apagado desde Configuración: se marca igual; el backend anota distancia y GPS falso.
+                ejecutar(accion, ubicacion, tocadoEn, enElLugar = false, simulada = ubicacion?.simulada == true)
+                return@launch
+            }
             val (puntoLat, puntoLng, nombrePunto) = when (accion) {
                 is Accion.Retiro -> Triple(viaje.origenLat, viaje.origenLng, "retiro")
                 is Accion.Entrega -> Triple(viaje.destinoLat, viaje.destinoLng, "destino")
@@ -249,9 +259,11 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         )
     }
 
-    private suspend fun ejecutar(accion: Accion, ubicacion: UbicacionMarcada?, tocadoEn: String, enElLugar: Boolean) {
+    private suspend fun ejecutar(
+        accion: Accion, ubicacion: UbicacionMarcada?, tocadoEn: String, enElLugar: Boolean, simulada: Boolean = false,
+    ) {
         val id = _uiState.value.viaje?.id ?: return
-        val marca = MarcaEnLugar(tocadoEn, enElLugar)
+        val marca = MarcaEnLugar(tocadoEn, enElLugar, simulada)
         when (accion) {
             is Accion.Retiro -> ejecutarRetirado(id, accion.foto, ubicacion, marca)
             is Accion.Parada -> ejecutarParada(id, accion, ubicacion, marca)

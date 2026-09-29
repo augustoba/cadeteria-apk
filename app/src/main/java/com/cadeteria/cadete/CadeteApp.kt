@@ -111,7 +111,14 @@ class CadeteApp : Application() {
         realtimeManager = RealtimeManager(sessionManager)
         pendingActionsRepository = PendingActionsRepository(
             PendingActionsStore(this), pedidoRepository, cadeteRepository, cloudinaryUploader,
-        )
+        ).apply {
+            avisarFallaDeSubida = { mensaje ->
+                com.cadeteria.cadete.push.NotificationHelper.mostrar(
+                    this@CadeteApp, com.cadeteria.cadete.push.NotificationHelper.CANAL_VIAJES,
+                    "falla-subida-pendiente".hashCode(), "No se pudo mandar lo pendiente", mensaje,
+                )
+            }
+        }
         onboardingStore = OnboardingStore(this)
         recordatorioEstado = com.cadeteria.cadete.push.RecordatorioEstado(this, appScope)
 

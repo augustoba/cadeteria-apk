@@ -92,7 +92,33 @@ class PendingActionsRepository(
         if (!archivo.exists()) return Result.success(null to true)
         val config = cadeteRepository.miConfiguracion().getOrNull() ?: return Result.failure(IllegalStateException())
         return cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, archivo, tipo ?: "image/*")
+            .onFailure { e -> if (e !is java.io.IOException) contarFallaDeSubida(pathLocal, e) }
             .map { it to false }
+    }
+
+    /**
+     * Falla de subida que no es falta de señal (ej. Cloudinary sin configurar): la cola la reintenta
+     * igual, pero a la [FALLAS_ANTES_DE_AVISAR]ª vez se le avisa al cadete una sola vez, para que no
+     * quede esperando para siempre sin saberlo (2026-09-28, pruebas de A + B).
+     */
+    private val fallasDeSubida = mutableMapOf<String, Int>()
+
+    /** Lo engancha CadeteApp para mostrar la notificación. */
+    var avisarFallaDeSubida: ((String) -> Unit)? = null
+
+    private fun contarFallaDeSubida(pathLocal: String, e: Throwable) {
+        val veces = (fallasDeSubida[pathLocal] ?: 0) + 1
+        fallasDeSubida[pathLocal] = veces
+        if (veces == FALLAS_ANTES_DE_AVISAR) {
+            avisarFallaDeSubida?.invoke(
+                "Hay un Retirado/Entregado guardado sin señal que no se puede mandar porque la foto no sube" +
+                    (e.message?.let { ": $it" } ?: ".") + " Avisale a la administración.",
+            )
+        }
+    }
+
+    companion object {
+        const val FALLAS_ANTES_DE_AVISAR = 3
     }
 
     private suspend fun reintentar(item: FinalizarPendiente): Boolean {

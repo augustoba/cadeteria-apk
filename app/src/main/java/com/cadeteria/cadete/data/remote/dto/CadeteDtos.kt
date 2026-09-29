@@ -100,6 +100,12 @@ data class CadeteConfigDto(
      */
     val enLugarRadioM: Int = 0,
     val enLugarPrecisionMaxM: Int = 0,
+    /**
+     * Interruptor de Configuración (2026-09-28): false = no se frena por distancia, falta de GPS ni GPS
+     * falso (solo se anota). Nullable a propósito: Gson no usa los defaults de Kotlin, y un backend que
+     * no lo manda no tiene que apagar el control (null = prendido).
+     */
+    val enLugarControlActivo: Boolean? = null,
 )
 
 /** Incidente por reclamo de un cliente que tiene bloqueado al cadete (GET /api/cadetes/me/incidente-abierto). */

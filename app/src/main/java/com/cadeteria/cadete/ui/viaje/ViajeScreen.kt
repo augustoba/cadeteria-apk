@@ -4,8 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.drawable.ShapeDrawable
-import android.graphics.drawable.shapes.OvalShape
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -959,12 +957,23 @@ private fun trazosABitmap(trazos: List<List<Offset>>, ancho: Int, alto: Int): Bi
     return bitmap
 }
 
-/** Pin circular de color plano para diferenciar origen/destino/cadete de un vistazo en el mapa. */
-private fun pinDrawable(color: Int, sizePx: Int = 36): ShapeDrawable =
-    ShapeDrawable(OvalShape()).apply {
-        paint.color = color
-        setBounds(0, 0, sizePx, sizePx)
-    }
+/**
+ * Pin circular de color con borde blanco para diferenciar origen/destino/cadete de un vistazo.
+ * Bitmap y no ShapeDrawable (2026-09-28): el ShapeDrawable no tiene tamaño propio (intrinsicWidth
+ * -1) y el Marker de osmdroid lo dibujaba con ese tamaño, o sea invisible — el mapa no mostraba pines.
+ */
+private fun pinDrawable(context: android.content.Context, color: Int, sizeDp: Int = 18): android.graphics.drawable.BitmapDrawable {
+    val px = (sizeDp * context.resources.displayMetrics.density).toInt().coerceAtLeast(12)
+    val bitmap = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    val radio = px / 2f
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawCircle(radio, radio, radio, paint)
+    paint.color = color
+    canvas.drawCircle(radio, radio, radio * 0.75f, paint)
+    return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
+}
 
 @Composable
 private fun MapaViaje(viaje: PedidoDto) {
@@ -999,13 +1008,13 @@ private fun MapaViaje(viaje: PedidoDto) {
             val destino = GeoPoint(viaje.destinoLat, viaje.destinoLng)
             map.overlays.add(Marker(map).apply {
                 position = origen
-                icon = pinDrawable(colorOrigen)
+                icon = pinDrawable(context, colorOrigen)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "Origen"
             })
             map.overlays.add(Marker(map).apply {
                 position = destino
-                icon = pinDrawable(colorDestino)
+                icon = pinDrawable(context, colorDestino)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "Destino"
             })
@@ -1013,20 +1022,27 @@ private fun MapaViaje(viaje: PedidoDto) {
             // Solo los pines, sin el camino dibujado (2026-09-28, pedido del usuario): el camino lo
             // arma Maps/Waze al navegar y el dibujado podía no coincidir. Se encuadran los 3 pines.
             encuadrar(map, listOf(origen, destino))
+            val ponerCadete = { loc: android.location.Location ->
+                val vos = GeoPoint(loc.latitude, loc.longitude)
+                map.overlays.add(Marker(map).apply {
+                    position = vos
+                    icon = pinDrawable(context, colorCadete)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    title = "Vos"
+                })
+                encuadrar(map, listOf(origen, destino, vos))
+            }
             try {
-                LocationServices.getFusedLocationProviderClient(context).lastLocation
-                    .addOnSuccessListener { loc ->
-                        if (loc != null) {
-                            val vos = GeoPoint(loc.latitude, loc.longitude)
-                            map.overlays.add(Marker(map).apply {
-                                position = vos
-                                icon = pinDrawable(colorCadete)
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                title = "Vos"
-                            })
-                            encuadrar(map, listOf(origen, destino, vos))
-                        }
+                val cliente = LocationServices.getFusedLocationProviderClient(context)
+                cliente.lastLocation.addOnSuccessListener { loc ->
+                    if (loc != null) {
+                        ponerCadete(loc)
+                    } else {
+                        // Sin última conocida (recién prendido, o el emulador): se pide una.
+                        cliente.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                            .addOnSuccessListener { actual -> if (actual != null) ponerCadete(actual) }
                     }
+                }
             } catch (e: SecurityException) {
                 // Sin permiso de ubicación todavía — el mapa igual muestra origen y destino.
             }
