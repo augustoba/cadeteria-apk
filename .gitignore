@@ -9,16 +9,10 @@
 .cxx
 local.properties
 
-# Artefactos de build de la app, se regeneran en cada compilación.
-# Excepción: el APK debug final sí se versiona a mano para distribuirlo a los cadetes.
-app/build/*
-!app/build/outputs/
-app/build/outputs/*
-!app/build/outputs/apk/
-app/build/outputs/apk/*
-!app/build/outputs/apk/debug/
-app/build/outputs/apk/debug/*
-!app/build/outputs/apk/debug/app-debug.apk
+# Artefactos de build de la app, se regeneran en cada compilación: nada de app/build va al repo.
+# El APK para repartir a los cadetes se copia A MANO a distribucion/ (ver distribucion/LEEME.md):
+# así compilar no deja el repo modificado (2026-09-29; antes se versionaba app-debug.apk acá adentro).
+app/build/
 
 # Secretos que no van al repo (ver README, cada uno los genera/descarga aparte)
 app/google-services.json
