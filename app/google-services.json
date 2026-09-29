@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "419399948479",
+    "project_id": "cadeteria-6a388",
+    "storage_bucket": "cadeteria-6a388.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419399948479:android:6021358637c7e7022a4e0a",
+        "android_client_info": {
+          "package_name": "com.cadeteria.cadete"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSX2hhDfLcC1DmHQRilliMM812QrlCZL8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419399948479:android:91823f766fcd7d712a4e0a",
+        "android_client_info": {
+          "package_name": "com.cadeteria.cadete.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSX2hhDfLcC1DmHQRilliMM812QrlCZL8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
