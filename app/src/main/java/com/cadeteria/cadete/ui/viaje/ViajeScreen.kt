@@ -93,6 +93,7 @@ import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.horaLocal
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.common.formatearPesos
+import com.cadeteria.cadete.ui.common.pinDrawable
 import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.CallBlue
 import com.cadeteria.cadete.ui.theme.Emerald600
@@ -957,27 +958,12 @@ private fun trazosABitmap(trazos: List<List<Offset>>, ancho: Int, alto: Int): Bi
     return bitmap
 }
 
-/**
- * Pin circular de color con borde blanco para diferenciar origen/destino/cadete de un vistazo.
- * Bitmap y no ShapeDrawable (2026-09-28): el ShapeDrawable no tiene tamaño propio (intrinsicWidth
- * -1) y el Marker de osmdroid lo dibujaba con ese tamaño, o sea invisible — el mapa no mostraba pines.
- */
-private fun pinDrawable(context: android.content.Context, color: Int, sizeDp: Int = 18): android.graphics.drawable.BitmapDrawable {
-    val px = (sizeDp * context.resources.displayMetrics.density).toInt().coerceAtLeast(12)
-    val bitmap = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(bitmap)
-    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-    val radio = px / 2f
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(radio, radio, radio, paint)
-    paint.color = color
-    canvas.drawCircle(radio, radio, radio * 0.75f, paint)
-    return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
-}
-
 @Composable
 private fun MapaViaje(viaje: PedidoDto) {
     val context = LocalContext.current
+    // Avisos de la calle activos cerca (2026-09-29): se ven en el mini mapa para esquivarlos. No
+    // entran en el encuadre, que sigue siendo origen, destino y vos.
+    val avisosCalle by (context.applicationContext as com.cadeteria.cadete.CadeteApp).avisosCalleStore.avisos.collectAsState()
     // Mismos colores que ya usa la fila Origen/Destino de arriba (FilaInfo) — naranja de
     // marca para retiro, rojo para entrega — más azul para la posición del cadete, para que
     // los tres pins se distingan de un vistazo (antes el mapa solo marcaba destino y cadete,
@@ -1018,6 +1004,9 @@ private fun MapaViaje(viaje: PedidoDto) {
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "Destino"
             })
+            avisosCalle.filter { com.cadeteria.cadete.ui.home.AvisosCalleTexto.vigente(it) }.forEach { aviso ->
+                map.overlays.add(com.cadeteria.cadete.ui.common.markerAvisoCalle(map, context, aviso))
+            }
 
             // Solo los pines, sin el camino dibujado (2026-09-28, pedido del usuario): el camino lo
             // arma Maps/Waze al navegar y el dibujado podía no coincidir. Se encuadran los 3 pines.

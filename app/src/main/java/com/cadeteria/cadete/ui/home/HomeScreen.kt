@@ -102,6 +102,7 @@ fun HomeScreen(
     onIrPerfil: () -> Unit,
     onCerrarSesion: () -> Unit,
     onIrAyuda: () -> Unit,
+    onIrMapaCalle: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
@@ -189,6 +190,7 @@ fun HomeScreen(
         onCerrarSesion = onCerrarSesion,
         onIrChat = onAbrirChat,
         onIrAyuda = onIrAyuda,
+        onIrMapaCalle = onIrMapaCalle,
         actions = {
             IconButton(onClick = vm::cargar) { Icon(Icons.Filled.Refresh, contentDescription = "Actualizar") }
         },

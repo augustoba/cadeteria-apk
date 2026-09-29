@@ -83,6 +83,7 @@ fun PerfilScreen(
     onCerrarSesion: () -> Unit,
     onIrAvisos: () -> Unit,
     onIrAyuda: () -> Unit,
+    onIrMapaCalle: () -> Unit = {},
     onIrChat: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -128,6 +129,7 @@ fun PerfilScreen(
         onCerrarSesion = onCerrarSesion,
         onIrChat = onIrChat,
         onIrAyuda = onIrAyuda,
+        onIrMapaCalle = onIrMapaCalle,
     ) { padding ->
         Column(
             Modifier

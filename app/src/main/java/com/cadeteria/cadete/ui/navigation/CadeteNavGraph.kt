@@ -29,6 +29,7 @@ import com.cadeteria.cadete.ui.common.UbicacionDesactivadaScreen
 import com.cadeteria.cadete.ui.historial.HistorialScreen
 import com.cadeteria.cadete.ui.home.HomeScreen
 import com.cadeteria.cadete.ui.login.LoginScreen
+import com.cadeteria.cadete.ui.mapacalle.MapaCalleScreen
 import com.cadeteria.cadete.ui.onboarding.OnboardingScreen
 import com.cadeteria.cadete.ui.perfil.PerfilScreen
 import com.cadeteria.cadete.ui.recuperarpassword.RecuperarPasswordScreen
@@ -195,6 +196,7 @@ fun CadeteNavGraph() {
                 onIrPerfil = { irA(Routes.PERFIL) },
                 onCerrarSesion = ::cerrarSesion,
                 onIrAyuda = { navController.navigate(Routes.AYUDA) },
+                onIrMapaCalle = { navController.navigate(Routes.MAPA_CALLE) },
             )
         }
         composable(
@@ -212,6 +214,7 @@ fun CadeteNavGraph() {
                 onCerrarSesion = ::cerrarSesion,
                 onIrChat = { navController.navigate(Routes.CHAT) },
                 onIrAyuda = { navController.navigate(Routes.AYUDA) },
+                onIrMapaCalle = { navController.navigate(Routes.MAPA_CALLE) },
             )
         }
         composable(Routes.CHAT) {
@@ -224,11 +227,15 @@ fun CadeteNavGraph() {
                 onCerrarSesion = ::cerrarSesion,
                 onIrAvisos = { navController.navigate(Routes.AVISOS) },
                 onIrAyuda = { navController.navigate(Routes.AYUDA) },
+                onIrMapaCalle = { navController.navigate(Routes.MAPA_CALLE) },
                 onIrChat = { navController.navigate(Routes.CHAT) },
             )
         }
         composable(Routes.AVISOS) {
             AvisosScreen(onVolver = { navController.popBackStack() })
+        }
+        composable(Routes.MAPA_CALLE) {
+            MapaCalleScreen(onVolver = { navController.popBackStack() })
         }
         composable(Routes.AYUDA) {
             AyudaScreen(

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
@@ -49,7 +50,7 @@ private fun fechaDeHoy(): String =
  * arriba de la moto/bici, una barra fija abajo queda al alcance del pulgar.
  *
  * El ☰ de arriba (spec-app-mejoras-visuales §2, decisión 2) NO navega entre pantallas — para
- * eso está la barra — : es el menú de la cuenta (Ayuda y Salir). En Inicio la barra superior
+ * eso está la barra — : es el menú de la cuenta (Mapa de la calle, Ayuda y Salir). En Inicio la barra superior
  * es el saludo con la fecha en vez del título.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +65,7 @@ fun AppScaffold(
     onCerrarSesion: () -> Unit,
     onIrChat: () -> Unit = {},
     onIrAyuda: () -> Unit = {},
+    onIrMapaCalle: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -79,6 +81,14 @@ fun AppScaffold(
                         Icon(Icons.Filled.Menu, contentDescription = "Menú de la cuenta")
                     }
                     DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Mapa de la calle") },
+                            leadingIcon = { Icon(Icons.Filled.Map, contentDescription = null) },
+                            onClick = {
+                                menuAbierto = false
+                                onIrMapaCalle()
+                            },
+                        )
                         DropdownMenuItem(
                             text = { Text("Ayuda") },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null) },

@@ -67,6 +67,7 @@ fun HistorialScreen(
     onCerrarSesion: () -> Unit,
     onIrChat: () -> Unit,
     onIrAyuda: () -> Unit,
+    onIrMapaCalle: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as CadeteApp
@@ -84,6 +85,7 @@ fun HistorialScreen(
         onCerrarSesion = onCerrarSesion,
         onIrChat = onIrChat,
         onIrAyuda = onIrAyuda,
+        onIrMapaCalle = onIrMapaCalle,
         actions = {
             IconButton(onClick = vm::cargar) { Icon(Icons.Filled.Refresh, contentDescription = "Actualizar") }
         },

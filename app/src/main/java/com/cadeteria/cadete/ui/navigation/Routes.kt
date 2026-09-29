@@ -12,6 +12,7 @@ object Routes {
     const val HISTORIAL = "historial"
     const val AVISOS = "avisos"
     const val AYUDA = "ayuda"
+    const val MAPA_CALLE = "mapa_calle"
 
     fun viaje(pedidoId: String) = "viaje/$pedidoId"
 }

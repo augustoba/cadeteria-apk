@@ -59,6 +59,10 @@ interface ApiService {
     @GET("api/cadetes/me/avisos-calle")
     suspend fun avisosCalleCerca(@Query("lat") lat: Double, @Query("lng") lng: Double): List<AvisoCalleDto>
 
+    /** Todos los avisos de la calle activos, sin límite de distancia ("Mapa de la calle", 2026-09-29). */
+    @GET("api/cadetes/me/avisos-calle")
+    suspend fun avisosCalleTodos(): List<AvisoCalleDto>
+
     /** "¿Sigue ahí?" (segunda etapa, 2026-09-29): SIGUE lo extiende, YA_NO_ESTA ayuda a bajarlo. */
     @POST("api/cadetes/me/avisos-calle/{id}/voto")
     suspend fun votarAvisoCalle(@Path("id") id: String, @Body req: VotoAvisoCalleRequest): AvisoCalleDto
