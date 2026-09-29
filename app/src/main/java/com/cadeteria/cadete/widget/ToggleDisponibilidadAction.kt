@@ -54,11 +54,8 @@ class ToggleDisponibilidadAction : ActionCallback {
 
         app.cadeteRepository.actualizarEstado(nuevoEstado)
             .onSuccess { actualizado ->
-                if (nuevoEstado == EstadoCadete.DESCONECTADO) {
-                    LocationServiceController.detener(context)
-                } else {
-                    LocationServiceController.iniciar(context)
-                }
+                // Con la sesión abierta la ubicación se manda en cualquier estado (2026-09-29).
+                LocationServiceController.iniciar(context)
                 app.recordatorioEstado.actualizar(actualizado.estado.id)
                 guardarMensaje(context, glanceId, null, actualizado.estado.id, actualizado.nombre)
             }

@@ -116,10 +116,11 @@ fun HomeScreen(
     // El servicio de ubicación solo arrancaba al tocar el botón de estado: si la app se abría con el
     // cadete ya Libre u Ocupado (reinstalación, reinicio, Android que mató el proceso) mostraba "Libre"
     // y no mandaba nada — en la prueba del 2026-09-26, 20 min sin ubicaciones. Arrancarlo de más no
-    // duplica nada (LocationTrackingService reemplaza la escucha anterior).
+    // duplica nada (LocationTrackingService reemplaza la escucha anterior). Desde el 2026-09-29 también
+    // Desconectado: con la sesión abierta siempre manda (sirve para aprender calles); corta "Salir".
     val estadoCadete = state.cadete?.estado?.id
     LaunchedEffect(estadoCadete) {
-        if (estadoCadete != null && estadoCadete != EstadoCadete.DESCONECTADO) LocationServiceController.iniciar(context)
+        if (estadoCadete != null) LocationServiceController.iniciar(context)
     }
 
     state.bienvenida?.let { b ->
@@ -242,13 +243,11 @@ fun HomeScreen(
                     onToggle = {
                         vm.toggleDisponibilidad(
                             onLocationServiceStart = { LocationServiceController.iniciar(context) },
-                            onLocationServiceStop = { LocationServiceController.detener(context) },
                         )
                     },
                     onToggleOcupado = {
                         vm.toggleOcupado(
                             onLocationServiceStart = { LocationServiceController.iniciar(context) },
-                            onLocationServiceStop = { LocationServiceController.detener(context) },
                         )
                     },
                 )

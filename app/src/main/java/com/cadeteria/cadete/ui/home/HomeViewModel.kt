@@ -193,7 +193,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
      * EN_CURSO — mismo criterio que ya usa "Cerrar sesión" del menú lateral, para no perder
      * el seguimiento de un viaje en curso.
      */
-    fun toggleDisponibilidad(onLocationServiceStart: () -> Unit, onLocationServiceStop: () -> Unit) {
+    fun toggleDisponibilidad(onLocationServiceStart: () -> Unit) {
         val actual = _uiState.value.cadete ?: return
         val nuevoEstado = if (actual.estado.id == EstadoCadete.DESCONECTADO) EstadoCadete.LIBRE else EstadoCadete.DESCONECTADO
         if (nuevoEstado == EstadoCadete.DESCONECTADO && _uiState.value.activos.isNotEmpty()) {
@@ -209,7 +209,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 return
             }
         }
-        cambiarEstado(nuevoEstado, onLocationServiceStart, onLocationServiceStop)
+        cambiarEstado(nuevoEstado, onLocationServiceStart)
     }
 
     /** Checklist de documentación obligatoria antes de activarse (mejora 2026-09-16) — reviso a ojo lo mismo que ya valida el backend, para avisar antes de intentar y no solo mostrar el error genérico del 400. */
@@ -230,20 +230,22 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
      * viajes aunque todavía tenga lugar según su tope de viajes simultáneos — antes esto
      * solo lo decidía el sistema en automático y no se podía tocar a mano.
      */
-    fun toggleOcupado(onLocationServiceStart: () -> Unit, onLocationServiceStop: () -> Unit) {
+    fun toggleOcupado(onLocationServiceStart: () -> Unit) {
         val actual = _uiState.value.cadete ?: return
         if (actual.estado.id == EstadoCadete.DESCONECTADO) return
         val nuevoEstado = if (actual.estado.id == EstadoCadete.OCUPADO) EstadoCadete.LIBRE else EstadoCadete.OCUPADO
-        cambiarEstado(nuevoEstado, onLocationServiceStart, onLocationServiceStop)
+        cambiarEstado(nuevoEstado, onLocationServiceStart)
     }
 
-    private fun cambiarEstado(nuevoEstado: String, onLocationServiceStart: () -> Unit, onLocationServiceStop: () -> Unit) {
+    private fun cambiarEstado(nuevoEstado: String, onLocationServiceStart: () -> Unit) {
         _uiState.value = _uiState.value.copy(cambiandoEstado = true)
         viewModelScope.launch {
             app.cadeteRepository.actualizarEstado(nuevoEstado)
                 .onSuccess { actualizado ->
                     _uiState.value = _uiState.value.copy(cadete = actualizado, cambiandoEstado = false)
-                    if (nuevoEstado == EstadoCadete.DESCONECTADO) onLocationServiceStop() else onLocationServiceStart()
+                    // En cualquier estado, también Desconectado (2026-09-29, pedido del usuario): la ubicación
+                    // se manda mientras haya sesión abierta y sirve para aprender calles. Corta solo "Salir".
+                    onLocationServiceStart()
                     CadeteWidget.sincronizarEstado(app, actualizado.estado.id, actualizado.nombre)
                     app.recordatorioEstado.actualizar(actualizado.estado.id)
                     // Al pasar a Libre, los avisos de la calle que llegaron mientras estaba desconectado.

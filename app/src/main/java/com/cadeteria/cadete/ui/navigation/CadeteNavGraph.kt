@@ -70,6 +70,8 @@ fun CadeteNavGraph() {
     // Token vencido o sesión tomada por otro dispositivo (spec: un solo dispositivo activo) — volver al login.
     LaunchedEffect(Unit) {
         app.sesionInvalidada.collect {
+            // Sin sesión no hay a quién mandarle la ubicación: se corta como en "Salir".
+            LocationServiceController.detener(context)
             app.recordatorioEstado.detener()
             navController.navigate(Routes.LOGIN) {
                 popUpTo(0) { inclusive = true }

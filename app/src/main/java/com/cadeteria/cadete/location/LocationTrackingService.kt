@@ -153,7 +153,7 @@ class LocationTrackingService : Service() {
         NotificationCompat.Builder(this, NotificationHelper.CANAL_UBICACION)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Cadetería")
-            .setContentText("Compartiendo tu ubicación mientras estás activo")
+            .setContentText("Compartiendo tu ubicación mientras tengas la sesión abierta")
             .setOngoing(true)
             .build()
 
