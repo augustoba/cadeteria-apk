@@ -40,6 +40,8 @@ class LocationTrackingService : Service() {
     }
 
     private val avisoLlegada = AvisoLlegada()
+    /** "¿Sigue ahí?" de los avisos de la calle cercanos (segunda etapa, 2026-09-29). */
+    private val preguntaSigueAhi = PreguntaSigueAhi()
     /** Calle del Geocoder del teléfono: cada ~120 m o 2 min, solo con buena precisión (2026-09-26). */
     private val throttleCalle = ThrottleCalle()
     private val mutexLlegada = Mutex()
@@ -91,6 +93,13 @@ class LocationTrackingService : Service() {
                     } else null
                     app.cadeteRepository.actualizarUbicacion(loc.latitude, loc.longitude, calle, precision)
                     revisarLlegada(app, loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy else null)
+                    // Pasó a menos de 100 m de un aviso de la calle de otro cadete: "¿Sigue ahí?" con dos botones.
+                    val store = app.avisosCalleStore
+                    preguntaSigueAhi.revisar(store.vigentes(), store.mios, loc.latitude, loc.longitude, precision)?.let {
+                        NotificationHelper.mostrarSigueAhi(
+                            this@LocationTrackingService, it.id, com.cadeteria.cadete.ui.home.AvisosCalleTexto.linea(it),
+                        )
+                    }
                 }
             }
         }

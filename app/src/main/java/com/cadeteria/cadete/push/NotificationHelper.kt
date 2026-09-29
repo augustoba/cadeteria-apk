@@ -148,4 +148,33 @@ object NotificationHelper {
             .build()
         NotificationManagerCompat.from(context).notify(id, notif)
     }
+
+    /**
+     * "¿Sigue ahí?" de un aviso de la calle (segunda etapa, 2026-09-29): notificación con dos botones
+     * que contestan sin abrir la app (un toque, manejando). Los recibe [VotoAvisoCalleReceiver].
+     */
+    fun mostrarSigueAhi(context: Context, avisoId: String, texto: String) {
+        val id = idSigueAhi(avisoId)
+        fun accion(voto: String, requestCode: Int) = android.app.PendingIntent.getBroadcast(
+            context, requestCode,
+            Intent(context, VotoAvisoCalleReceiver::class.java)
+                .putExtra(VotoAvisoCalleReceiver.EXTRA_AVISO_ID, avisoId)
+                .putExtra(VotoAvisoCalleReceiver.EXTRA_VOTO, voto),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notif = NotificationCompat.Builder(context, CANAL_CALLE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("¿Sigue ahí?")
+            .setContentText(texto)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVibrate(PATRON_VIBRACION_CALLE)
+            .setTimeoutAfter(10 * 60_000L)
+            .addAction(0, "Sigue", accion(VotoAvisoCalleReceiver.SIGUE, id))
+            .addAction(0, "Ya no está", accion(VotoAvisoCalleReceiver.YA_NO_ESTA, id + 1))
+            .build()
+        NotificationManagerCompat.from(context).notify(id, notif)
+    }
+
+    fun idSigueAhi(avisoId: String) = ("sigue-ahi:$avisoId").hashCode()
 }

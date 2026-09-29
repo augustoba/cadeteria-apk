@@ -58,6 +58,9 @@ class CadeteApp : Application() {
         private set
     lateinit var onboardingStore: OnboardingStore
 
+    /** Avisos de la calle activos que conoce la app (Inicio y "¿Sigue ahí?" del servicio de ubicación). */
+    val avisosCalleStore = com.cadeteria.cadete.data.local.AvisosCalleStore()
+
     /** Aviso cada 30 min en DESCONECTADO/OCUPADO (spec mejoras visuales §5). */
     lateinit var recordatorioEstado: com.cadeteria.cadete.push.RecordatorioEstado
         private set
@@ -125,6 +128,25 @@ class CadeteApp : Application() {
         NotificationHelper.crearCanales(this)
         configurarOsmdroid()
         registrarReintentoDeFinalizacionesPendientes()
+        escucharAvisosCalle()
+    }
+
+    /**
+     * Avisos de la calle de otros cadetes, en vivo (2026-09-29: acá y no en Inicio, así suena aunque
+     * esa pantalla no esté abierta). Solo notifica los nuevos: los cambios ("sigue" lo extiende, "ya no
+     * está" lo baja) llegan por el mismo canal y solo actualizan la lista.
+     */
+    private fun escucharAvisosCalle() {
+        appScope.launch {
+            realtimeManager.avisosCalle.collect { aviso ->
+                if (avisosCalleStore.recibir(aviso)) {
+                    NotificationHelper.mostrar(
+                        this@CadeteApp, NotificationHelper.CANAL_CALLE, aviso.id.hashCode(),
+                        "🚨 Aviso de la calle", com.cadeteria.cadete.ui.home.AvisosCalleTexto.linea(aviso),
+                    )
+                }
+            }
+        }
     }
 
     /**

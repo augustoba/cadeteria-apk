@@ -59,6 +59,10 @@ interface ApiService {
     @GET("api/cadetes/me/avisos-calle")
     suspend fun avisosCalleCerca(@Query("lat") lat: Double, @Query("lng") lng: Double): List<AvisoCalleDto>
 
+    /** "¿Sigue ahí?" (segunda etapa, 2026-09-29): SIGUE lo extiende, YA_NO_ESTA ayuda a bajarlo. */
+    @POST("api/cadetes/me/avisos-calle/{id}/voto")
+    suspend fun votarAvisoCalle(@Path("id") id: String, @Body req: VotoAvisoCalleRequest): AvisoCalleDto
+
     @PATCH("api/cadetes/me/estado")
     suspend fun actualizarEstado(@Body req: EstadoRequest): CadeteDto
 

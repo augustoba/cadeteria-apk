@@ -311,7 +311,11 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     com.cadeteria.cadete.data.remote.dto.AvisoCalleRequest(tipo, ubicacion.lat, ubicacion.lng, ubicacion.precisionM),
                 )
             }
-                .onSuccess { terminarAvisoCalle(AvisosCalleTexto.confirmacion(it)) }
+                .onSuccess {
+                    // Se guarda como propio: no se le pregunta "¿Sigue ahí?" por su propio aviso.
+                    app.avisosCalleStore.marcarMio(it)
+                    terminarAvisoCalle(AvisosCalleTexto.confirmacion(it))
+                }
                 .onFailure { e ->
                     terminarAvisoCalle(
                         if (e is java.io.IOException) "No se pudo mandar, no hay conexión."
@@ -334,21 +338,17 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
         viewModelScope.launch {
             val ubicacion = com.cadeteria.cadete.location.ubicacionActual(app) ?: return@launch
             runCatching { app.retrofitProvider.apiService().avisosCalleCerca(ubicacion.first, ubicacion.second) }
-                .onSuccess { lista -> _uiState.value = _uiState.value.copy(avisosCalle = lista.filter { AvisosCalleTexto.vigente(it) }) }
+                .onSuccess { lista -> app.avisosCalleStore.reemplazar(lista) }
         }
     }
 
-    /** Aviso de otro cadete cerca, en vivo: notificación con su canal (sonido distinto) y a la lista. */
+    /**
+     * La lista "Avisos cerca tuyo" sale del almacén de la app (2026-09-29): ahí llegan los avisos en
+     * vivo (y se notifican, ver CadeteApp) y sus cambios por "¿Sigue ahí?".
+     */
     private fun escucharAvisosCalle() {
         viewModelScope.launch {
-            app.realtimeManager.avisosCalle.collect { aviso ->
-                NotificationHelper.mostrar(
-                    app, NotificationHelper.CANAL_CALLE, aviso.id.hashCode(), "🚨 Aviso de la calle", AvisosCalleTexto.linea(aviso),
-                )
-                val lista = (listOf(aviso) + _uiState.value.avisosCalle.filter { it.id != aviso.id })
-                    .filter { AvisosCalleTexto.vigente(it) }
-                _uiState.value = _uiState.value.copy(avisosCalle = lista)
-            }
+            app.avisosCalleStore.avisos.collect { lista -> _uiState.value = _uiState.value.copy(avisosCalle = lista) }
         }
     }
 

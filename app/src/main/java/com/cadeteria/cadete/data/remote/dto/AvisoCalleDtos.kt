@@ -34,3 +34,6 @@ object TipoAvisoCalle {
 
     fun emoji(tipo: String): String = OPCIONES.firstOrNull { it.first == tipo }?.second ?: "🚨"
 }
+
+/** "¿Sigue ahí?" (segunda etapa, 2026-09-29): SIGUE o YA_NO_ESTA. */
+data class VotoAvisoCalleRequest(val voto: String)

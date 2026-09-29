@@ -68,6 +68,11 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="@string/notification_channel_viajes" />
 
+        <!-- Botones "Sigue" / "Ya no está" de la notificación "¿Sigue ahí?" (avisos de la calle, 2026-09-29). -->
+        <receiver
+            android:name=".push.VotoAvisoCalleReceiver"
+            android:exported="false" />
+
         <!-- Widget de pantalla de inicio: activarse/desconectarse sin abrir la app (mejora 2026-09-16). -->
         <receiver
             android:name=".widget.CadeteWidgetReceiver"
