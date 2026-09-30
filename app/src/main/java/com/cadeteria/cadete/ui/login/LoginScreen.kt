@@ -1,6 +1,7 @@
 package com.cadeteria.cadete.ui.login
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,17 +37,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.ui.common.BannerError
-import com.cadeteria.cadete.ui.common.CademWordmark
+import com.cadeteria.cadete.ui.common.CalleConVehiculos
+import com.cadeteria.cadete.ui.common.LogoCadem
 import com.cadeteria.cadete.ui.common.ViewModelFactory
 import com.cadeteria.cadete.ui.theme.CademCharcoal
 import com.cadeteria.cadete.ui.theme.Gray500
@@ -74,23 +76,20 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                 .imePadding()
                 .verticalScroll(rememberScrollState()),
         ) {
+            // Centrado y con el logo (2026-09-29, pedido del usuario): antes era el texto "Cadem" a la izquierda.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 40.dp),
+                    .padding(horizontal = 32.dp, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CademWordmark(contraste = Color.White, tamano = 40.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "cadetería",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFBDBDBD),
-                )
-                Spacer(Modifier.height(4.dp))
+                LogoCadem(tamano = 128.dp)
+                Spacer(Modifier.height(16.dp))
                 Text(
                     "Ingresá con tu usuario de cadete para empezar a recibir viajes.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF9E9E9E),
+                    textAlign = TextAlign.Center,
                 )
             }
 
@@ -146,19 +145,14 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                     )
                     Spacer(Modifier.height(24.dp))
 
-                    if (state.cargando) {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(Modifier.padding(8.dp))
-                        }
-                    } else {
-                        Button(
-                            onClick = { vm.login(username, password, onLoginOk) },
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                        ) { Text("Ingresar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                    }
+                    Button(
+                        onClick = { vm.login(username, password, onLoginOk) },
+                        enabled = !state.cargando,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                    ) { Text("Ingresar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
 
                     Spacer(Modifier.height(4.dp))
                     TextButton(onClick = onOlvidoPassword, modifier = Modifier.fillMaxWidth()) {
@@ -168,6 +162,25 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                         Text("Cambiar servidor")
                     }
                 }
+            }
+        }
+    }
+
+    // Mientras ingresa (2026-09-29): el logo respira con el anillo girando y abajo pasan la moto y la bici.
+    if (state.cargando) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(CademCharcoal.copy(alpha = 0.97f))
+                .pointerInput(Unit) { detectTapGestures { } }, // que no se toque el formulario de atrás
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                LogoCadem(tamano = 150.dp, animado = true)
+                Spacer(Modifier.height(28.dp))
+                CalleConVehiculos(ancho = 240.dp)
+                Spacer(Modifier.height(20.dp))
+                Text("Ingresando…", style = MaterialTheme.typography.titleMedium, color = Color.White)
             }
         }
     }

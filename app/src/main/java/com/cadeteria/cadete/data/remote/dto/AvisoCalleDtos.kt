@@ -14,9 +14,19 @@ data class AvisoCalleDto(
     val calle: String?,
     val creadoEn: String,
     val venceEn: String,
+    /** true si lo avisó este cadete (2026-09-29); null en lo que llega en vivo o de un backend viejo. */
+    val mio: Boolean? = null,
 )
 
-data class AvisoCalleRequest(val tipo: String, val lat: Double, val lng: Double, val precision: Float?)
+/** calle/altura: las del Geocoder del teléfono (2026-09-29), null si no las pudo resolver. */
+data class AvisoCalleRequest(
+    val tipo: String,
+    val lat: Double,
+    val lng: Double,
+    val precision: Float?,
+    val calle: String? = null,
+    val altura: Int? = null,
+)
 
 /** Las 4 opciones del botón "Avisar": clave que viaja al backend, emoji y texto. */
 object TipoAvisoCalle {

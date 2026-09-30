@@ -5,6 +5,9 @@ data class LoginRequest(
     val password: String,
     /** Para que el panel admin vea qué versión de APK tiene cada cadete conectado (mejora 2026-09-17). */
     val versionApp: Int? = null,
+    /** Un celular por cadete (2026-09-29): identificador de este celular (ANDROID_ID) y su marca y modelo. */
+    val celularId: String? = null,
+    val celularModelo: String? = null,
 )
 
 data class TokenResponse(

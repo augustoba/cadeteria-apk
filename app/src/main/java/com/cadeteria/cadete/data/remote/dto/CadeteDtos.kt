@@ -113,6 +113,8 @@ data class CadeteConfigDto(
     val recordatoriosActivo: Boolean? = null,
     val recordatoriosTitulo: String? = null,
     val recordatoriosTextos: List<String>? = null,
+    /** Minutos mínimos entre Retirado y Finalizar (2026-09-29); null = backend viejo (sin espera), 0 = apagado. */
+    val minutosMinimosRetiroEntrega: Int? = null,
 )
 
 /** Incidente por reclamo de un cliente que tiene bloqueado al cadete (GET /api/cadetes/me/incidente-abierto). */

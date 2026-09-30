@@ -59,7 +59,9 @@ class CadeteApp : Application() {
     lateinit var onboardingStore: OnboardingStore
 
     /** Avisos de la calle activos que conoce la app (Inicio y "¿Sigue ahí?" del servicio de ubicación). */
-    val avisosCalleStore = com.cadeteria.cadete.data.local.AvisosCalleStore()
+    val avisosCalleStore by lazy {
+        com.cadeteria.cadete.data.local.AvisosCalleStore(getSharedPreferences("avisos_calle", MODE_PRIVATE))
+    }
 
     /** Aviso cada 30 min en DESCONECTADO/OCUPADO (spec mejoras visuales §5). */
     lateinit var recordatorioEstado: com.cadeteria.cadete.push.RecordatorioEstado
@@ -106,7 +108,11 @@ class CadeteApp : Application() {
         super.onCreate()
         sessionManager = SessionManager(this)
         retrofitProvider = RetrofitProvider(sessionManager) { _sesionInvalidada.tryEmit(Unit) }
-        authRepository = AuthRepository(retrofitProvider, sessionManager)
+        authRepository = AuthRepository(
+            retrofitProvider, sessionManager,
+            celularId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID),
+            celularModelo = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+        )
         cadeteRepository = CadeteRepository(retrofitProvider)
         pedidoRepository = PedidoRepository(retrofitProvider)
         chatRepository = ChatRepository(retrofitProvider)

@@ -61,6 +61,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -189,12 +190,8 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
         },
     ) { padding ->
         val viaje = state.viaje
-        if (state.cargando || viaje == null) {
-            CargandoFullScreen()
-            return@Scaffold
-        }
-
-        if (state.finalizarEncolado) {
+        // Antes que "cargando/sin viaje": sin señal el detalle no llega, pero la entrega guardada sí se muestra.
+        if (state.finalizarEncolado && !state.cargando) {
             Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
                 BannerInfo(
                     "📶 Sin conexión — guardamos la finalización y la vamos a mandar sola apenas vuelva internet, no hace falta que hagas nada más.",
@@ -203,6 +200,10 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onVolver, modifier = Modifier.fillMaxWidth()) { Text("Volver") }
             }
+            return@Scaffold
+        }
+        if (state.cargando || viaje == null) {
+            CargandoFullScreen()
             return@Scaffold
         }
 
@@ -395,6 +396,8 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                     enviando = state.enviando,
                     buscandoUbicacion = state.buscandoUbicacion,
                     paradasEncoladas = state.paradasEncoladas,
+                    retiradoDesde = state.retiradoDesde,
+                    minutosMinimosEntrega = state.minutosMinimosEntrega,
                     onMarcarRetirado = { foto -> vm.marcarRetirado(foto) },
                     onParadaEntregadaClick = { paradaId -> vm.marcarParadaEntregada(paradaId) },
                     onFinalizarClick = { mostrarFinalizar = true },
@@ -621,6 +624,8 @@ private fun AccionesEnCurso(
     enviando: Boolean,
     buscandoUbicacion: Boolean,
     paradasEncoladas: Set<String>,
+    retiradoDesde: String?,
+    minutosMinimosEntrega: Int,
     onMarcarRetirado: (File?) -> Unit,
     onParadaEntregadaClick: (String) -> Unit,
     onFinalizarClick: () -> Unit,
@@ -649,6 +654,17 @@ private fun AccionesEnCurso(
     }
 
     val paradasPendientes = viaje.paradas.filter { it.entregadoEn == null && it.id !in paradasEncoladas }
+    // Espera mínima entre Retirado y Finalizar (2026-09-29): cuenta regresiva que se actualiza sola.
+    val faltanParaFinalizar by produceState(
+        EsperaEntrega.segundosRestantes(retiradoDesde, System.currentTimeMillis(), minutosMinimosEntrega),
+        retiradoDesde, minutosMinimosEntrega,
+    ) {
+        while (true) {
+            value = EsperaEntrega.segundosRestantes(retiradoDesde, System.currentTimeMillis(), minutosMinimosEntrega)
+            if (value == 0) break
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
 
     Column {
         if (!yaRetirado) {
@@ -720,7 +736,7 @@ private fun AccionesEnCurso(
         Button(
             onClick = onFinalizarClick,
             // 2026-09-28: no se puede entregar sin haber retirado (el backend también lo controla).
-            enabled = yaRetirado && paradasPendientes.isEmpty(),
+            enabled = yaRetirado && paradasPendientes.isEmpty() && faltanParaFinalizar == 0,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
         ) {
@@ -735,6 +751,12 @@ private fun AccionesEnCurso(
         } else if (paradasPendientes.isNotEmpty()) {
             Text(
                 "Marcá todas las paradas como entregadas antes de finalizar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else if (faltanParaFinalizar > 0) {
+            Text(
+                EsperaEntrega.mensaje(faltanParaFinalizar, minutosMinimosEntrega),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )

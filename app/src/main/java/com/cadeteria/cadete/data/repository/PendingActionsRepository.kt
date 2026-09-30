@@ -64,6 +64,20 @@ class PendingActionsRepository(
     suspend fun hayPendientes(): Boolean =
         store.listar().isNotEmpty() || store.listarRetiros().isNotEmpty() || store.listarParadas().isNotEmpty()
 
+    /** Lo que este viaje tiene guardado sin señal, para que la pantalla no deje marcarlo de nuevo (2026-09-29). */
+    data class EncoladoDelViaje(val finalizar: Boolean, val retiro: RetiradoPendiente?, val paradas: Set<String>)
+
+    suspend fun encoladoDe(pedidoId: String): EncoladoDelViaje = EncoladoDelViaje(
+        finalizar = store.listar().any { it.pedidoId == pedidoId },
+        retiro = store.listarRetiros().firstOrNull { it.pedidoId == pedidoId },
+        paradas = store.listarParadas().filter { it.pedidoId == pedidoId }.map { it.paradaId }.toSet(),
+    )
+
+    /** Viajes con algo guardado sin señal (Retirado, parada o Entregado), para marcarlos en Inicio. */
+    suspend fun pedidosConEncolados(): Set<String> =
+        (store.listar().map { it.pedidoId } + store.listarRetiros().map { it.pedidoId } +
+            store.listarParadas().map { it.pedidoId }).toSet()
+
     /**
      * Reintenta todas las encoladas; la que vuelve a fallar por conexión queda para la próxima vez.
      * En el orden del viaje: el backend no acepta una parada ni la entrega sin el Retirado antes.
@@ -119,6 +133,21 @@ class PendingActionsRepository(
 
     companion object {
         const val FALLAS_ANTES_DE_AVISAR = 3
+
+        /** 4xx de negocio (400/404/409/422…): reintentar no lo arregla. Sesión, límite y 5xx sí pueden pasar. */
+        fun esRechazoDefinitivo(e: Throwable): Boolean {
+            val codigo = (e as? retrofit2.HttpException)?.code() ?: return false
+            return codigo in 400..499 && codigo !in setOf(401, 403, 408, 429)
+        }
+
+        /** El "message" del ApiError del backend (con Gson: org.json no anda en los tests de JVM). */
+        fun motivoDelRechazo(e: Throwable): String? {
+            val cuerpo = runCatching { (e as? retrofit2.HttpException)?.response()?.errorBody()?.string() }.getOrNull()
+                ?: return null
+            return runCatching {
+                com.google.gson.JsonParser.parseString(cuerpo).asJsonObject.get("message")?.asString
+            }.getOrNull()?.takeIf { it.isNotBlank() }
+        }
     }
 
     private suspend fun reintentar(item: FinalizarPendiente): Boolean {
@@ -127,7 +156,7 @@ class PendingActionsRepository(
         return pedidoRepository.finalizar(
             item.pedidoId, item.receptorNombre, fotoUrl, firmaUrl, item.lat, item.lng, fotoPerdida || firmaPerdida,
             precision = item.precision, marca = marca(item.tocadoEn, item.enElLugar),
-        ).isSuccess
+        ).salioDeLaCola("la entrega")
     }
 
     private suspend fun reintentarRetiro(item: RetiradoPendiente): Boolean {
@@ -135,13 +164,29 @@ class PendingActionsRepository(
         return pedidoRepository.marcarRetirado(
             item.pedidoId, fotoUrl, item.lat, item.lng, perdida,
             precision = item.precision, marca = marca(item.tocadoEn, item.enElLugar),
-        ).isSuccess
+        ).salioDeLaCola("el Retirado")
     }
 
     private suspend fun reintentarParada(item: ParadaPendiente): Boolean {
         val (fotoUrl, _) = subirSiHaceFalta(item.fotoUrl, item.fotoPathLocal).getOrElse { return false }
         return pedidoRepository.marcarParadaEntregada(
             item.pedidoId, item.paradaId, item.lat, item.lng, item.precision, fotoUrl, marca(item.tocadoEn, item.enElLugar),
-        ).isSuccess
+        ).salioDeLaCola("la parada")
+    }
+
+    /**
+     * true = sale de la cola: se mandó, o el servidor lo rechazó para siempre (2026-09-29). Como el
+     * viaje queda bloqueado mientras tiene algo encolado, un rechazo definitivo que se quedara en la
+     * cola lo trabaría para siempre: se saca y se le avisa al cadete para que lo vuelva a marcar.
+     */
+    private fun Result<*>.salioDeLaCola(que: String): Boolean {
+        if (isSuccess) return true
+        val e = exceptionOrNull() ?: return false
+        if (!esRechazoDefinitivo(e)) return false
+        avisarFallaDeSubida?.invoke(
+            "No se pudo guardar $que que marcaste sin señal" + (motivoDelRechazo(e)?.let { ": $it" } ?: ".") +
+                " Entrá al viaje y volvé a marcarlo.",
+        )
+        return true
     }
 }

@@ -17,7 +17,20 @@ data class ChatUiState(
     val enviando: Boolean = false,
     val grabando: Boolean = false,
     val error: String? = null,
-)
+    /** "Subiendo foto…", "Enviando audio…" (2026-09-29): qué se manda, para el cartel de abajo. */
+    val queSeEnvia: String? = null,
+) {
+    val enviandoQue: String? get() = if (enviando) queSeEnvia else null
+}
+
+/**
+ * El mensaje propio llega dos veces: la respuesta del envío y el mismo por WebSocket, en cualquier
+ * orden. La lista usa el id como clave y con uno repetido la app se cerraba (bug 2026-09-29).
+ */
+object ChatMensajes {
+    fun agregar(lista: List<MensajeDto>, nuevo: MensajeDto): List<MensajeDto> =
+        if (lista.any { it.id == nuevo.id }) lista else lista + nuevo
+}
 
 class ChatViewModel(private val app: CadeteApp) : ViewModel() {
 
@@ -51,13 +64,13 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
     fun enviar(texto: String) {
         val id = cadeteId ?: return
         if (texto.isBlank()) return
-        _uiState.value = _uiState.value.copy(enviando = true, error = null)
+        _uiState.value = _uiState.value.copy(enviando = true, error = null, queSeEnvia = "Enviando mensaje…")
         viewModelScope.launch {
             app.chatRepository.enviar(id, texto.trim())
                 .onSuccess { nuevo ->
                     _uiState.value = _uiState.value.copy(
                         enviando = false,
-                        mensajes = _uiState.value.mensajes + nuevo,
+                        mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo),
                     )
                 }
                 .onFailure { _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo enviar el mensaje.") }
@@ -104,7 +117,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
         rec.release()
         recorder = null
         archivoGrabacion = null
-        _uiState.value = _uiState.value.copy(grabando = false, enviando = true, error = null)
+        _uiState.value = _uiState.value.copy(grabando = false, enviando = true, error = null, queSeEnvia = "Enviando audio…")
         viewModelScope.launch {
             val config = app.cadeteRepository.miConfiguracion().getOrNull()
             if (config == null) {
@@ -115,7 +128,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
                 .onSuccess { url ->
                     app.chatRepository.enviarNotaDeVoz(id, url)
                         .onSuccess { nuevo ->
-                            _uiState.value = _uiState.value.copy(enviando = false, mensajes = _uiState.value.mensajes + nuevo)
+                            _uiState.value = _uiState.value.copy(enviando = false, mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo))
                         }
                         .onFailure {
                             _uiState.value = _uiState.value.copy(
@@ -136,18 +149,22 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
     /** Mejora 88 — adjuntar foto en el chat, ej. "esta dirección no existe". La foto ya viene elegida/tomada (`archivo`). */
     fun enviarImagen(archivo: File) {
         val id = cadeteId ?: return
-        _uiState.value = _uiState.value.copy(enviando = true, error = null)
+        _uiState.value = _uiState.value.copy(enviando = true, error = null, queSeEnvia = "Subiendo foto…")
         viewModelScope.launch {
             val config = app.cadeteRepository.miConfiguracion().getOrNull()
             if (config == null) {
                 _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo leer la configuración del servidor — la foto NO se mandó, probá de nuevo.")
                 return@launch
             }
+            // Derecha y achicada antes de subir, igual que las fotos del viaje (bug 2026-09-29: llegaba girada).
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.cadeteria.cadete.util.corregirRotacionExif(archivo)
+            }
             app.cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, archivo, "image/jpeg")
                 .onSuccess { url ->
                     app.chatRepository.enviarImagen(id, url)
                         .onSuccess { nuevo ->
-                            _uiState.value = _uiState.value.copy(enviando = false, mensajes = _uiState.value.mensajes + nuevo)
+                            _uiState.value = _uiState.value.copy(enviando = false, mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo))
                         }
                         .onFailure {
                             _uiState.value = _uiState.value.copy(
@@ -169,7 +186,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
         viewModelScope.launch {
             app.realtimeManager.mensajesChat.collect { nuevo ->
                 if (_uiState.value.mensajes.any { it.id == nuevo.id }) return@collect
-                _uiState.value = _uiState.value.copy(mensajes = _uiState.value.mensajes + nuevo)
+                _uiState.value = _uiState.value.copy(mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo))
                 cadeteId?.let { app.chatRepository.marcarLeido(it) }
                 app.limpiarChatNoLeidos()
             }

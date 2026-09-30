@@ -41,7 +41,11 @@ class LocationTrackingService : Service() {
 
     private val avisoLlegada = AvisoLlegada()
     /** "¿Sigue ahí?" de los avisos de la calle cercanos (segunda etapa, 2026-09-29). */
-    private val preguntaSigueAhi = PreguntaSigueAhi()
+    // Lazy: la app todavía no está al construirse el servicio. Lo ya preguntado sobrevive a los reinicios.
+    private val preguntaSigueAhi by lazy {
+        val store = (application as CadeteApp).avisosCalleStore
+        PreguntaSigueAhi(preguntadosIniciales = store.preguntados, alPreguntar = store::marcarPreguntado)
+    }
     /** Calle del Geocoder del teléfono: cada ~120 m o 2 min, solo con buena precisión (2026-09-26). */
     private val throttleCalle = ThrottleCalle()
     private val mutexLlegada = Mutex()

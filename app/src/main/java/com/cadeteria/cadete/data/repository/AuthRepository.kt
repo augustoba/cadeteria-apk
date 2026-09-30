@@ -13,11 +13,17 @@ class VersionDesactualizadaException : Exception("Esta versión de la app quedó
 class AuthRepository(
     private val retrofitProvider: RetrofitProvider,
     private val session: SessionManager,
+    /**
+     * Un celular por cadete (2026-09-29): Android no deja leer el IMEI; ANDROID_ID es propio de este
+     * celular y de esta app, sobrevive a reinstalarla y cambia con un reseteo de fábrica.
+     */
+    private val celularId: String?,
+    private val celularModelo: String,
 ) {
     /** Loguea y de paso resuelve el perfil, para tener id/nombre a mano (chat, saludo, etc). */
     suspend fun login(username: String, password: String): Result<Unit> = runCatching {
         val api = retrofitProvider.apiService()
-        val token = api.login(LoginRequest(username.trim(), password, BuildConfig.VERSION_CODE))
+        val token = api.login(LoginRequest(username.trim(), password, BuildConfig.VERSION_CODE, celularId, celularModelo))
         session.guardarSesion(token.token, username.trim(), cadeteId = "", cadeteNombre = "")
 
         // Con el token ya guardado, el interceptor de auth ahora puede pedir el perfil.

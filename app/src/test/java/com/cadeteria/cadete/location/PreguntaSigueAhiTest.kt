@@ -35,4 +35,15 @@ class PreguntaSigueAhiTest {
         // Con GPS malo no lo marca como preguntado: se pregunta cuando mejora.
         assertEquals("impreciso", p.revisar(listOf(aviso("impreciso", 0.0002)), emptySet(), lat, lng, 20f, ahora)?.id)
     }
+
+    @Test
+    fun alReiniciarseNoVuelveAPreguntarPorElMismo() {
+        // Bug 2026-09-29: con cada reinicio de la app/servicio se volvía a preguntar por el mismo aviso.
+        val guardados = mutableSetOf<String>()
+        val antes = PreguntaSigueAhi(preguntadosIniciales = guardados, alPreguntar = { guardados += it })
+        assertEquals("cerca", antes.revisar(listOf(aviso("cerca", 0.0002)), emptySet(), lat, lng, 10f, ahora)?.id)
+
+        val despues = PreguntaSigueAhi(preguntadosIniciales = guardados.toSet())
+        assertNull(despues.revisar(listOf(aviso("cerca", 0.0002)), emptySet(), lat, lng, 10f, ahora))
+    }
 }

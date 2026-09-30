@@ -12,13 +12,17 @@ import com.cadeteria.cadete.ui.home.AvisosCalleTexto
 class PreguntaSigueAhi(
     private val radioM: Double = RADIO_M,
     private val precisionMaximaM: Float = PRECISION_MAXIMA_M,
+    /** Los ya preguntados antes de un reinicio (guardados en el teléfono, bug 2026-09-29). */
+    preguntadosIniciales: Set<String> = emptySet(),
+    /** Para guardar cada aviso preguntado y que sobreviva al reinicio de la app o del servicio. */
+    private val alPreguntar: (String) -> Unit = {},
 ) {
     companion object {
         const val RADIO_M = 100.0
         const val PRECISION_MAXIMA_M = 100f
     }
 
-    private val preguntados = mutableSetOf<String>()
+    private val preguntados = preguntadosIniciales.toMutableSet()
 
     /** El aviso por el que hay que preguntar ahora (el más cercano), o null. Lo marca como preguntado. */
     fun revisar(
@@ -38,6 +42,7 @@ class PreguntaSigueAhi(
             .minByOrNull { (_, d) -> d }
             ?.first ?: return null
         preguntados += aviso.id
+        alPreguntar(aviso.id)
         return aviso
     }
 }

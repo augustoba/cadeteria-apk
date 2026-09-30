@@ -64,7 +64,14 @@ data class ViajeUiState(
     val enLugarPrecisionMaxM: Int = ControlEnLugar.PRECISION_MAX_M_DEFAULT,
     /** Interruptor de Configuración: apagado, no se frena (solo el orden Retirado → Entregado). */
     val enLugarControlActivo: Boolean = true,
-)
+    /** Hora del toque del Retirado guardado sin señal: para la espera antes de Finalizar (el viaje no la tiene todavía). */
+    val retiroEncoladoEn: String? = null,
+    /** Minutos mínimos entre Retirado y Finalizar (2026-09-29, Configuración); 0 = sin espera. */
+    val minutosMinimosEntrega: Int = EsperaEntrega.MINUTOS_DEFAULT,
+) {
+    /** Desde cuándo corre la espera para poder finalizar: el Retirado del servidor o el guardado sin señal. */
+    val retiradoDesde: String? get() = viaje?.retiradoEn?.takeIf { it.isNotBlank() } ?: retiroEncoladoEn
+}
 
 class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) : ViewModel() {
 
@@ -99,6 +106,8 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                     enLugarRadioM = it.enLugarRadioM.takeIf { r -> r > 0 } ?: ControlEnLugar.RADIO_M_DEFAULT,
                     enLugarPrecisionMaxM = it.enLugarPrecisionMaxM.takeIf { p -> p > 0 } ?: ControlEnLugar.PRECISION_MAX_M_DEFAULT,
                     enLugarControlActivo = it.enLugarControlActivo != false,
+                    // null = backend anterior a la espera: no se frena en el teléfono (el backend tampoco).
+                    minutosMinimosEntrega = it.minutosMinimosRetiroEntrega ?: 0,
                 )
             }
         }
@@ -109,8 +118,20 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             _uiState.value = _uiState.value.copy(cargando = true, error = null)
             val res = app.pedidoRepository.detalle(pedidoId)
             val viaje = res.getOrNull()
+            // Lo guardado sin señal sale de la cola, no de la memoria de esta pantalla (bug 2026-09-29: al
+            // volver a entrar desde Inicio se podía marcar de nuevo un Retirado/Finalizar ya encolado).
+            val encolado = app.pendingActionsRepository.encoladoDe(pedidoId)
             // Sin pedir la ruta (2026-09-28): el mini mapa muestra solo los pines, el camino lo arma Maps/Waze.
-            _uiState.value = _uiState.value.copy(cargando = false, viaje = viaje, terminado = viaje == null)
+            _uiState.value = _uiState.value.copy(
+                cargando = false,
+                viaje = viaje,
+                // Sin señal no llega el detalle: si la entrega está guardada se muestra el aviso, no se cierra.
+                terminado = viaje == null && !encolado.finalizar,
+                finalizarEncolado = encolado.finalizar,
+                retiradoEncolado = encolado.retiro != null,
+                retiroEncoladoEn = encolado.retiro?.tocadoEn,
+                paradasEncoladas = encolado.paradas,
+            )
         }
     }
 
@@ -146,10 +167,16 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
      * estando en el lugar (2026-09-28, ver [iniciar]). Sin conexión se encola y la app lo reintenta
      * sola cuando vuelva internet (ronda 3, punto 24).
      */
-    fun marcarRetirado(foto: File?) = iniciar(Accion.Retiro(foto))
+    fun marcarRetirado(foto: File?) {
+        if (_uiState.value.retiradoEncolado || _uiState.value.finalizarEncolado) return // ya guardado sin señal
+        iniciar(Accion.Retiro(foto))
+    }
 
     /** Marca una parada intermedia como entregada (repartos con varias entregas en la misma vuelta). */
-    fun marcarParadaEntregada(paradaId: String) = iniciar(Accion.Parada(paradaId, null))
+    fun marcarParadaEntregada(paradaId: String) {
+        if (paradaId in _uiState.value.paradasEncoladas || _uiState.value.finalizarEncolado) return
+        iniciar(Accion.Parada(paradaId, null))
+    }
 
     /**
      * Botón "Finalizar" (Entregado): solo en el destino y con el Retirado ya marcado. Sin conexión
@@ -158,6 +185,13 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
     fun finalizar(receptorNombre: String?, foto: File?, firma: File?) {
         if (!Validaciones.vacioO(Validaciones.NOMBRE_PERSONA, receptorNombre)) {
             _uiState.value = _uiState.value.copy(error = Validaciones.MSJ_RECEPTOR)
+            return
+        }
+        val s = _uiState.value
+        if (s.finalizarEncolado) return // ya guardado sin señal
+        val faltan = EsperaEntrega.segundosRestantes(s.retiradoDesde, System.currentTimeMillis(), s.minutosMinimosEntrega)
+        if (faltan > 0) {
+            _uiState.value = s.copy(error = EsperaEntrega.mensaje(faltan, s.minutosMinimosEntrega))
             return
         }
         iniciar(Accion.Entrega(receptorNombre, foto, firma))
@@ -311,7 +345,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         app.pendingActionsRepository.encolarRetirado(
             id, fotoUrl, fotoPathLocal, ubicacion?.lat, ubicacion?.lng, marca.tocadoEn, ubicacion?.precisionM, marca.enElLugar,
         )
-        _uiState.value = _uiState.value.copy(enviando = false, retiradoEncolado = true)
+        _uiState.value = _uiState.value.copy(enviando = false, retiradoEncolado = true, retiroEncoladoEn = marca.tocadoEn)
     }
 
     private suspend fun ejecutarParada(id: String, accion: Accion.Parada, ubicacion: UbicacionMarcada?, marca: MarcaEnLugar) {

@@ -288,6 +288,7 @@ fun HomeScreen(
                                     ViajeResumenCard(
                                         viaje,
                                         tiempoLimiteAceptacionSeg = state.tiempoLimiteAceptacionSeg,
+                                        guardadoSinSenal = viaje.id in state.encolados,
                                         onVerDetalle = { onAbrirViaje(viaje.id) },
                                     )
                                 }
@@ -507,7 +508,12 @@ private fun EstadoVacio() {
  * naranja = retiro, verde = entrega — en vez de la barra lateral de color de antes.
  */
 @Composable
-private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, onVerDetalle: () -> Unit) {
+private fun ViajeResumenCard(
+    viaje: PedidoDto,
+    tiempoLimiteAceptacionSeg: Int,
+    guardadoSinSenal: Boolean,
+    onVerDetalle: () -> Unit,
+) {
     val esPendiente = viaje.estado.id == EstadoPedido.PENDIENTE
     val color = if (esPendiente) Amber500 else Emerald600
     Card(
@@ -532,6 +538,14 @@ private fun ViajeResumenCard(viaje: PedidoDto, tiempoLimiteAceptacionSeg: Int, o
             }
             Spacer(Modifier.height(12.dp))
             RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
+            if (guardadoSinSenal) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "📶 Guardado sin señal — se manda solo cuando vuelva internet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Gray500,
+                )
+            }
             Spacer(Modifier.height(14.dp))
             Button(
                 onClick = onVerDetalle,

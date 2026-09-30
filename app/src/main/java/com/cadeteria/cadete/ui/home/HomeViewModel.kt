@@ -22,6 +22,8 @@ data class HomeUiState(
     val cadete: CadeteDto? = null,
     /** Sección "Asignados y en curso" — puede haber más de uno si el tope de viajes lo permite. */
     val activos: List<PedidoDto> = emptyList(),
+    /** Viajes con Retirado/parada/Entregado guardado sin señal: la tarjeta lo avisa (2026-09-29). */
+    val encolados: Set<String> = emptySet(),
     /** Incidente por reclamo de un cliente: mientras esté abierto no le llegan pedidos (2026-09-26). */
     val incidenteAbierto: com.cadeteria.cadete.data.remote.dto.IncidenteAbiertoDto? = null,
     val error: String? = null,
@@ -174,8 +176,10 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
             val perfil = app.cadeteRepository.miPerfil()
             val activos = app.pedidoRepository.viajesActivos()
             val incidente = app.cadeteRepository.incidenteAbierto().getOrNull()
+            val encolados = app.pendingActionsRepository.pedidosConEncolados()
             _uiState.value = _uiState.value.copy(
                 incidenteAbierto = incidente,
+                encolados = encolados,
                 cargando = false,
                 cadete = perfil.getOrNull(),
                 // El asignado sin aceptar (PENDIENTE) va primero — tiene tiempo límite para
@@ -328,9 +332,14 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 terminarAvisoCalle("Tu celular está usando una ubicación simulada. Desactivá esa app para avisar.")
                 return@launch
             }
+            // La calle del Geocoder del teléfono (2026-09-29): la misma que ve el panel. Sin ella el backend
+            // usa OpenStreetMap, que en algunas zonas nombra otra calle (Colombia 4695 → "Camino del Perú").
+            val calle = ubicacion.calle ?: com.cadeteria.cadete.location.calleDelTelefono(app, ubicacion.lat, ubicacion.lng)
             runCatching {
                 app.retrofitProvider.apiService().avisarCalle(
-                    com.cadeteria.cadete.data.remote.dto.AvisoCalleRequest(tipo, ubicacion.lat, ubicacion.lng, ubicacion.precisionM),
+                    com.cadeteria.cadete.data.remote.dto.AvisoCalleRequest(
+                        tipo, ubicacion.lat, ubicacion.lng, ubicacion.precisionM, calle?.calle, calle?.altura,
+                    ),
                 )
             }
                 .onSuccess {

@@ -74,7 +74,7 @@ import com.cadeteria.cadete.ui.theme.Gray500
 import com.cadeteria.cadete.ui.theme.Red50
 import com.cadeteria.cadete.util.optimizarImagen
 import java.io.File
-import java.io.FileOutputStream
+import com.cadeteria.cadete.util.crearArchivoFotoTemporal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,12 +91,12 @@ fun ChatScreen(onVolver: () -> Unit) {
     }
 
     /** Mejora 88 — adjuntar foto en el chat, ej. "esta dirección no existe". */
-    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            val archivo = File(context.cacheDir, "chat_foto_${System.currentTimeMillis()}.jpg")
-            FileOutputStream(archivo).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-            vm.enviarImagen(archivo)
-        }
+    // Foto completa con TakePicture (2026-09-29): TakePicturePreview devolvía una miniatura de 255 px sin
+    // el dato de orientación — en el panel no se podía agrandar y llegaba girada (mismo bug que viaje/perfil).
+    var archivoFoto by remember { mutableStateOf<File?>(null) }
+    val tomarFoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        val archivo = archivoFoto
+        if (exito && archivo != null) vm.enviarImagen(archivo)
     }
 
     LaunchedEffect(state.mensajes.size) {
@@ -158,7 +158,7 @@ fun ChatScreen(onVolver: () -> Unit) {
                 }
                 if (texto.isBlank()) {
                     if (!state.grabando) {
-                        BotonCircular(onClick = { tomarFoto.launch(null) }, enabled = !state.enviando, fondo = Gray100) {
+                        BotonCircular(onClick = { val (archivo, uri) = crearArchivoFotoTemporal(context); archivoFoto = archivo; tomarFoto.launch(uri) }, enabled = !state.enviando, fondo = Gray100) {
                             Icon(Icons.Filled.PhotoCamera, contentDescription = "Adjuntar foto", tint = Gray500)
                         }
                     }
@@ -209,11 +209,26 @@ fun ChatScreen(onVolver: () -> Unit) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .weight(1f)
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.mensajes, key = { it.id }) { mensaje -> BurbujaMensaje(mensaje) }
+            }
+            // Qué se está mandando (2026-09-29): una foto con datos móviles tarda y antes no se veía nada.
+            state.enviandoQue?.let { que ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(que, style = MaterialTheme.typography.bodySmall, color = Gray500)
+                }
             }
         }
     }
