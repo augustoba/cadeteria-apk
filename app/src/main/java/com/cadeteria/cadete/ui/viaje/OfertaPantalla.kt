@@ -22,8 +22,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.cadeteria.cadete.ui.common.Vibracion
+import com.cadeteria.cadete.ui.common.efectoToque
+import com.cadeteria.cadete.ui.common.latido
+import com.cadeteria.cadete.ui.common.parsearInstanteUtc
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -123,15 +132,31 @@ fun OfertaPantalla(
             } else {
                 // Aceptar más grande que Rechazar (~70/30, spec §3 cambio 4): la acción esperada
                 // es la que queda bajo el pulgar.
+                // Aceptar late mientras corre el tiempo; en los últimos 10 segundos, más rápido y temblando (2026-09-29).
+                val inicioMs = remember(viaje.asignadoEn) { viaje.asignadoEn?.let(::parsearInstanteUtc) }
+                val quedanSeg by produceState(Int.MAX_VALUE, inicioMs, tiempoLimiteSeg) {
+                    while (inicioMs != null) {
+                        value = ((inicioMs + tiempoLimiteSeg * 1000L - System.currentTimeMillis()) / 1000).toInt()
+                        delay(250)
+                    }
+                }
+                val context = LocalContext.current
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = onAceptar,
-                        modifier = Modifier.weight(0.7f).height(60.dp),
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .height(60.dp)
+                            .latido(activo = true, urgente = quedanSeg in 0..10)
+                            .efectoToque(),
                         colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
                     ) { Text("✅ Aceptar", fontWeight = FontWeight.Bold, fontSize = 18.sp) }
                     OutlinedButton(
-                        onClick = onRechazar,
-                        modifier = Modifier.weight(0.3f).height(60.dp),
+                        onClick = {
+                            Vibracion.fuerte(context)
+                            onRechazar()
+                        },
+                        modifier = Modifier.weight(0.3f).height(60.dp).efectoToque(vibrar = false),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                         contentPadding = PaddingValues(horizontal = 8.dp),

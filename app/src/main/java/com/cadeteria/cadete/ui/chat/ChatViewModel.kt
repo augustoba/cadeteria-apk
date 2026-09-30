@@ -68,6 +68,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
         viewModelScope.launch {
             app.chatRepository.enviar(id, texto.trim())
                 .onSuccess { nuevo ->
+                    com.cadeteria.cadete.ui.common.Vibracion.exito(app)
                     _uiState.value = _uiState.value.copy(
                         enviando = false,
                         mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo),
@@ -128,6 +129,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
                 .onSuccess { url ->
                     app.chatRepository.enviarNotaDeVoz(id, url)
                         .onSuccess { nuevo ->
+                            com.cadeteria.cadete.ui.common.Vibracion.exito(app)
                             _uiState.value = _uiState.value.copy(enviando = false, mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo))
                         }
                         .onFailure {
@@ -164,6 +166,7 @@ class ChatViewModel(private val app: CadeteApp) : ViewModel() {
                 .onSuccess { url ->
                     app.chatRepository.enviarImagen(id, url)
                         .onSuccess { nuevo ->
+                            com.cadeteria.cadete.ui.common.Vibracion.exito(app)
                             _uiState.value = _uiState.value.copy(enviando = false, mensajes = ChatMensajes.agregar(_uiState.value.mensajes, nuevo))
                         }
                         .onFailure {

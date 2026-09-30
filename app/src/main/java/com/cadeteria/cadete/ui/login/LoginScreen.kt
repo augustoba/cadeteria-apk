@@ -50,7 +50,11 @@ import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.CalleConVehiculos
 import com.cadeteria.cadete.ui.common.LogoCadem
+import com.cadeteria.cadete.ui.common.Vibracion
 import com.cadeteria.cadete.ui.common.ViewModelFactory
+import com.cadeteria.cadete.ui.common.efectoToque
+import com.cadeteria.cadete.ui.common.temblor
+import androidx.compose.runtime.LaunchedEffect
 import com.cadeteria.cadete.ui.theme.CademCharcoal
 import com.cadeteria.cadete.ui.theme.Gray500
 
@@ -111,7 +115,31 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                         BannerError(it, Modifier.fillMaxWidth())
                         Spacer(Modifier.height(12.dp))
                     }
+                    // Versión vieja (2026-09-29): el link de un solo uso abre la descarga de la APK nueva.
+                    state.linkDescarga?.let { link ->
+                        Button(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link)),
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().height(52.dp).efectoToque(),
+                        ) { Text("⬇ Descargar la nueva versión", fontWeight = FontWeight.Bold) }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    // Clave mal o bloqueado: los campos tiemblan y vibra "no" (2026-09-29).
+                    var sacudidas by remember { mutableStateOf(0) }
+                    LaunchedEffect(state.error) {
+                        if (state.error != null) {
+                            sacudidas++
+                            Vibracion.error(context)
+                        }
+                    }
 
+                    Column(Modifier.temblor(sacudidas)) {
                     OutlinedTextField(
                         value = username,
                         // El usuario del cadete es su DNI (el alta ya lo exige, 2026-09-26): solo números.
@@ -143,6 +171,7 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    }
                     Spacer(Modifier.height(24.dp))
 
                     Button(
@@ -151,7 +180,8 @@ fun LoginScreen(onLoginOk: () -> Unit, onCambiarServidor: () -> Unit, onOlvidoPa
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .height(52.dp)
+                            .efectoToque(),
                     ) { Text("Ingresar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
 
                     Spacer(Modifier.height(4.dp))

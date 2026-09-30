@@ -8,7 +8,16 @@ import com.cadeteria.cadete.data.remote.dto.LoginRequest
 import com.cadeteria.cadete.data.remote.dto.RecuperarPasswordRequest
 
 /** Se lanza si el APK instalado quedó por debajo de `version_minima_app` (spec: distribución por Bluetooth, sin Play Store). */
-class VersionDesactualizadaException : Exception("Esta versión de la app quedó vieja — pedile al admin el APK actualizado.")
+class VersionDesactualizadaException(
+    /** Link de un solo uso para bajar la nueva (2026-09-29); null si en el panel no hay una APK subida. */
+    val linkDescarga: String? = null,
+) : Exception(
+    if (linkDescarga != null) {
+        "Tu versión de la app es vieja. Descargá la nueva, instalala y volvé a entrar."
+    } else {
+        "Esta versión de la app quedó vieja — pedile al admin el APK actualizado."
+    },
+)
 
 class AuthRepository(
     private val retrofitProvider: RetrofitProvider,
@@ -32,8 +41,10 @@ class AuthRepository(
 
         val config = runCatching { retrofitProvider.apiService().miConfiguracion() }.getOrNull()
         if (config != null && BuildConfig.VERSION_CODE < config.versionMinimaApp) {
+            // Con la sesión todavía abierta se pide el link de la APK nueva, y recién ahí se cierra.
+            val link = runCatching { retrofitProvider.apiService().linkApk().url }.getOrNull()
             session.cerrarSesion()
-            throw VersionDesactualizadaException()
+            throw VersionDesactualizadaException(link)
         }
     }
 

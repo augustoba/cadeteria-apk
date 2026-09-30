@@ -55,6 +55,14 @@ interface ApiService {
     @GET("api/cadetes/me/avisos/historial")
     suspend fun historialAvisos(): List<AvisoHistorialDto>
 
+    /** Qué permisos le faltan a la app (2026-09-29), para la ficha del cadete en el panel. */
+    @POST("api/cadetes/me/permisos")
+    suspend fun informarPermisos(@Body req: com.cadeteria.cadete.data.remote.dto.PermisosRequest)
+
+    /** Link de un solo uso para bajar la APK actual (2026-09-29): "Tu versión es vieja → Descargar la nueva". */
+    @POST("api/cadetes/me/apk/link")
+    suspend fun linkApk(): com.cadeteria.cadete.data.remote.dto.LinkApkDto
+
     /** "Avisos de la calle" (carril C, 2026-09-28): avisar algo que se vio en la calle. */
     @POST("api/cadetes/me/avisos-calle")
     suspend fun avisarCalle(@Body req: AvisoCalleRequest): AvisoCalleDto

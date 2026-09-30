@@ -5,6 +5,9 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import com.cadeteria.cadete.ui.common.efectoToque
+import com.cadeteria.cadete.ui.common.latido
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
@@ -56,6 +59,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -317,11 +322,22 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
         EstadoCadete.LIBRE -> Triple("Estás LIBRE", "Podés recibir viajes nuevos.", Emerald600)
         EstadoCadete.OCUPADO -> Triple("Estás OCUPADO", "No te van a asignar viajes nuevos hasta que te pongas libre de nuevo.", Amber500)
         else -> Triple("Estás DESCONECTADO", "Activate para empezar a recibir viajes.", Red600)
+    }.let { (t, s, c) ->
+        // Transición de color al cambiar de estado (2026-09-29), en vez de cambiar de golpe.
+        Triple(t, s, animateColorAsState(c, tween(450), label = "colorEstado").value)
+    }
+    val fondo by animateColorAsState(fondoDeEstado(estadoId, color), tween(450), label = "fondoEstado")
+    // El cambio de estado se confirma con una vibración corta (se nota con el celular en el bolsillo).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var estadoAnterior by remember { mutableStateOf(estadoId) }
+    LaunchedEffect(estadoId) {
+        if (estadoAnterior != estadoId) com.cadeteria.cadete.ui.common.Vibracion.exito(context)
+        estadoAnterior = estadoId
     }
     Card(
         Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = fondoDeEstado(estadoId, color)),
+        colors = CardDefaults.cardColors(containerColor = fondo),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -353,8 +369,10 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
             Button(
                 onClick = onToggle,
                 enabled = !cambiando,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (esDesconectado) Emerald600 else Red600),
+                modifier = Modifier.fillMaxWidth().height(56.dp).efectoToque(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = animateColorAsState(if (esDesconectado) Emerald600 else Red600, tween(450), label = "colorBoton").value,
+                ),
             ) {
                 if (cambiando) {
                     CircularProgressIndicator(Modifier.height(24.dp), color = Color.White)
@@ -371,7 +389,7 @@ private fun EstadoCard(estadoId: String, cambiando: Boolean, onToggle: () -> Uni
                 OutlinedButton(
                     onClick = onToggleOcupado,
                     enabled = !cambiando,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp).efectoToque(),
                 ) {
                     Text(
                         if (estadoId == EstadoCadete.OCUPADO) "▶ Ponerme libre" else "⏸ Ponerme ocupado",
@@ -549,7 +567,7 @@ private fun ViajeResumenCard(
             Spacer(Modifier.height(14.dp))
             Button(
                 onClick = onVerDetalle,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp).latido(activo = esPendiente).efectoToque(),
                 colors = if (esPendiente) ButtonDefaults.buttonColors(containerColor = Amber500) else ButtonDefaults.buttonColors(),
             ) {
                 Text(

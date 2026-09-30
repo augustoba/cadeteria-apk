@@ -18,13 +18,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.location.LocationServiceController
-import com.cadeteria.cadete.location.rememberPermisoUbicacion
+import com.cadeteria.cadete.location.PermisosApp
+import com.cadeteria.cadete.location.rememberPermisosFaltantes
 import com.cadeteria.cadete.location.rememberUbicacionHabilitada
 import com.cadeteria.cadete.ui.avisos.AvisosScreen
 import com.cadeteria.cadete.ui.ayuda.AyudaScreen
 import com.cadeteria.cadete.ui.chat.ChatScreen
 import com.cadeteria.cadete.ui.common.CargandoFullScreen
-import com.cadeteria.cadete.ui.common.PermisoUbicacionScreen
+import com.cadeteria.cadete.ui.common.PermisosScreen
 import com.cadeteria.cadete.ui.common.UbicacionDesactivadaScreen
 import com.cadeteria.cadete.ui.historial.HistorialScreen
 import com.cadeteria.cadete.ui.home.HomeScreen
@@ -51,10 +52,20 @@ fun CadeteNavGraph() {
         return
     }
 
-    // Sin permiso de ubicación no se entra, ni al login (2026-09-26).
-    val permisoUbicacion = rememberPermisoUbicacion()
-    if (!permisoUbicacion.value) {
-        PermisoUbicacionScreen(onConcedido = { permisoUbicacion.value = true })
+    // Sin los permisos necesarios no se entra, ni al login (ubicación desde 2026-09-26; notificaciones,
+    // micrófono y batería sin restricciones desde 2026-09-29). Lo que falta se le informa al panel.
+    val permisosFaltantes = rememberPermisosFaltantes()
+    LaunchedEffect(permisosFaltantes.value) {
+        if (app.sessionManager.isLoggedIn()) {
+            runCatching {
+                app.retrofitProvider.apiService().informarPermisos(
+                    com.cadeteria.cadete.data.remote.dto.PermisosRequest(PermisosApp.paraInformar(permisosFaltantes.value)),
+                )
+            }
+        }
+    }
+    if (permisosFaltantes.value.isNotEmpty()) {
+        PermisosScreen(permisosFaltantes.value, alCambiar = { permisosFaltantes.value = PermisosApp.faltantes(context) })
         return
     }
 
@@ -149,7 +160,23 @@ fun CadeteNavGraph() {
         )
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    // Las pantallas entran deslizando desde la derecha y al volver salen hacia la derecha (2026-09-29),
+    // cortito (250 ms) para que no se sienta lenta.
+    val duracion = 250
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = {
+            androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(duracion)) { it / 4 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(duracion))
+        },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(duracion / 2)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(duracion)) },
+        popExitTransition = {
+            androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(duracion)) { it / 4 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(duracion))
+        },
+    ) {
         composable(Routes.SERVIDOR) {
             ServerConfigScreen(onContinuar = { navController.popBackStack() })
         }

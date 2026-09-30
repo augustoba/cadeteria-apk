@@ -64,6 +64,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import com.cadeteria.cadete.ui.common.ConfirmacionAnimada
+import com.cadeteria.cadete.ui.common.Vibracion
+import com.cadeteria.cadete.ui.common.efectoToque
+import com.cadeteria.cadete.ui.common.temblor
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,11 +139,16 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
     )
     val state by vm.uiState.collectAsState()
 
-    LaunchedEffect(state.terminado, state.preguntarSiSigueLibre) {
-        if (state.terminado && !state.preguntarSiSigueLibre) onVolver()
+    // Los diálogos y el cierre esperan a que termine el tilde animado (2026-09-29).
+    LaunchedEffect(state.terminado, state.preguntarSiSigueLibre, state.festejo) {
+        if (state.terminado && !state.preguntarSiSigueLibre && state.festejo == null) onVolver()
+    }
+    // Error o frenado ("estás a 800 m", "faltan 6 minutos"): dos golpecitos, para enterarse sin mirar.
+    LaunchedEffect(state.error, state.fueraDeZona) {
+        if (state.error != null || state.fueraDeZona != null) Vibracion.error(context)
     }
 
-    if (state.preguntarSiSigueLibre) {
+    if (state.preguntarSiSigueLibre && state.festejo == null) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Ya no tenés viajes activos") },
@@ -146,7 +162,7 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
         )
     }
 
-    if (state.preguntarSiQuedaOcupado) {
+    if (state.preguntarSiQuedaOcupado && state.festejo == null) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Viaje aceptado") },
@@ -476,6 +492,14 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
             },
         )
     }
+
+    when (val f = state.festejo) {
+        Festejo.Aceptado -> ConfirmacionAnimada("¡Viaje aceptado!", Emerald600, alTerminar = vm::terminoFestejo)
+        is Festejo.Entregado -> ConfirmacionAnimada(
+            "¡Entregado!", Emerald600, alTerminar = vm::terminoFestejo, monto = f.monto, duracionMs = 1_600,
+        )
+        null -> {}
+    }
 }
 
 @Composable
@@ -701,11 +725,26 @@ private fun AccionesEnCurso(
             Button(
                 enabled = !fotoRetiroObligatoria || fotoRetiro != null,
                 onClick = { onMarcarRetirado(archivoFotoRetiro) },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp).efectoToque(),
             ) { Text("📦 Marcar como retirado", fontWeight = FontWeight.SemiBold) }
             Spacer(Modifier.height(16.dp))
         } else {
-            BannerInfo("Ya marcaste que retiraste el pedido.")
+            // El botón se convierte en "✓ Retirado" con un pop (2026-09-29), en vez de cambiar de golpe.
+            val pop = remember { Animatable(0.7f) }
+            LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium)) }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .graphicsLayer {
+                        scaleX = pop.value
+                        scaleY = pop.value
+                    }
+                    .background(Emerald600.copy(alpha = 0.12f), RoundedCornerShape(26.dp)),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text("✓ Retirado", color = Emerald600, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
             Spacer(Modifier.height(16.dp))
         }
 
@@ -733,12 +772,28 @@ private fun AccionesEnCurso(
             Spacer(Modifier.height(12.dp))
         }
 
+        // 2026-09-28: no se puede entregar sin haber retirado (el backend también lo controla). Bloqueado se ve
+        // gris pero se puede tocar: tiembla y vibra "no" (2026-09-29), en vez de no hacer nada.
+        val finalizarBloqueado = !yaRetirado || paradasPendientes.isNotEmpty() || faltanParaFinalizar > 0
+        var sacudidas by remember { mutableStateOf(0) }
         Button(
-            onClick = onFinalizarClick,
-            // 2026-09-28: no se puede entregar sin haber retirado (el backend también lo controla).
-            enabled = yaRetirado && paradasPendientes.isEmpty() && faltanParaFinalizar == 0,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+            onClick = {
+                if (finalizarBloqueado) {
+                    sacudidas++
+                    Vibracion.error(context)
+                } else {
+                    onFinalizarClick()
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .temblor(sacudidas)
+                .efectoToque(vibrar = !finalizarBloqueado),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (finalizarBloqueado) MaterialTheme.colorScheme.surfaceVariant else Emerald600,
+                contentColor = if (finalizarBloqueado) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+            ),
         ) {
             Text("✅ Finalizar viaje", fontWeight = FontWeight.SemiBold)
         }

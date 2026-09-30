@@ -68,15 +68,27 @@ data class ViajeUiState(
     val retiroEncoladoEn: String? = null,
     /** Minutos mínimos entre Retirado y Finalizar (2026-09-29, Configuración); 0 = sin espera. */
     val minutosMinimosEntrega: Int = EsperaEntrega.MINUTOS_DEFAULT,
+    /** Tilde animado (2026-09-29): "¡Viaje aceptado!" o "¡Entregado!"; los diálogos de después esperan a que termine. */
+    val festejo: Festejo? = null,
 ) {
     /** Desde cuándo corre la espera para poder finalizar: el Retirado del servidor o el guardado sin señal. */
     val retiradoDesde: String? get() = viaje?.retiradoEn?.takeIf { it.isNotBlank() } ?: retiroEncoladoEn
+}
+
+/** El tilde animado que se muestra después de aceptar o de entregar (2026-09-29). */
+sealed class Festejo {
+    data object Aceptado : Festejo()
+    data class Entregado(val monto: Double) : Festejo()
 }
 
 class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ViajeUiState())
     val uiState: StateFlow<ViajeUiState> = _uiState.asStateFlow()
+
+    fun terminoFestejo() {
+        _uiState.value = _uiState.value.copy(festejo = null)
+    }
 
     /** Lo que el cadete quiso marcar: Retirado, una parada o Entregado. */
     private sealed class Accion {
@@ -141,7 +153,9 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         viewModelScope.launch {
             app.pedidoRepository.aceptar(id)
                 .onSuccess {
-                    _uiState.value = _uiState.value.copy(viaje = it, enviando = false, preguntarSiQuedaOcupado = true)
+                    _uiState.value = _uiState.value.copy(
+                        viaje = it, enviando = false, preguntarSiQuedaOcupado = true, festejo = Festejo.Aceptado,
+                    )
                 }
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
@@ -329,7 +343,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             id, fotoUrl, ubicacion?.lat, ubicacion?.lng, precision = ubicacion?.precisionM,
             calleDetectada = ubicacion?.calle?.calle, localidadDetectada = ubicacion?.calle?.localidad, marca = marca,
         )
-            .onSuccess { _uiState.value = _uiState.value.copy(enviando = false, viaje = it) }
+            .onSuccess {
+                com.cadeteria.cadete.ui.common.Vibracion.exito(app)
+                _uiState.value = _uiState.value.copy(enviando = false, viaje = it)
+            }
             .onFailure { e ->
                 if (e is java.io.IOException) {
                     encolarRetiradoOffline(id, fotoUrl, null, ubicacion, marca)
@@ -374,7 +391,10 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             return
         }
         app.pedidoRepository.marcarParadaEntregada(id, accion.paradaId, ubicacion?.lat, ubicacion?.lng, ubicacion?.precisionM, fotoUrl, marca)
-            .onSuccess { _uiState.value = _uiState.value.copy(enviando = false, viaje = it) }
+            .onSuccess {
+                com.cadeteria.cadete.ui.common.Vibracion.exito(app)
+                _uiState.value = _uiState.value.copy(enviando = false, viaje = it)
+            }
             .onFailure { e ->
                 if (e is java.io.IOException) {
                     encolar()
@@ -429,6 +449,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                     viaje = it,
                     terminado = true,
                     preguntarSiSigueLibre = !quedanActivos,
+                    festejo = Festejo.Entregado(it.precio),
                 )
             }
             .onFailure { e ->

@@ -356,6 +356,28 @@ fun PerfilScreen(
                         ) { Text(etiqueta) }
                     }
                 }
+                // Vibrar al tocar (2026-09-29): prendido por defecto, por si a alguno le molesta.
+                val contexto = LocalContext.current
+                var vibrar by remember { mutableStateOf(com.cadeteria.cadete.ui.common.Vibracion.habilitada(contexto)) }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Vibrar al tocar", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Una vibración corta al tocar un botón y otra distinta si algo sale bien o mal.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = vibrar,
+                        onCheckedChange = {
+                            vibrar = it
+                            com.cadeteria.cadete.ui.common.Vibracion.setHabilitada(contexto, it)
+                            if (it) com.cadeteria.cadete.ui.common.Vibracion.exito(contexto)
+                        },
+                    )
+                }
             }
 
             Spacer(Modifier.height(16.dp))

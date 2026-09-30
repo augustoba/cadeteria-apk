@@ -75,6 +75,7 @@ import com.cadeteria.cadete.ui.theme.Red50
 import com.cadeteria.cadete.util.optimizarImagen
 import java.io.File
 import com.cadeteria.cadete.util.crearArchivoFotoTemporal
+import com.cadeteria.cadete.ui.common.efectoToque
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +198,8 @@ fun ChatScreen(onVolver: () -> Unit) {
             CargandoFullScreen()
             return@Scaffold
         }
+        // Los que ya estaban al abrir el chat no se animan; solo los que llegan o se mandan después.
+        val idsAlAbrir = remember { state.mensajes.map { it.id }.toSet() }
         Column(
             Modifier
                 .fillMaxSize()
@@ -214,7 +217,9 @@ fun ChatScreen(onVolver: () -> Unit) {
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(state.mensajes, key = { it.id }) { mensaje -> BurbujaMensaje(mensaje) }
+                items(state.mensajes, key = { it.id }) { mensaje ->
+                    EntradaMensaje(animar = mensaje.id !in idsAlAbrir) { BurbujaMensaje(mensaje) }
+                }
             }
             // Qué se está mandando (2026-09-29): una foto con datos móviles tarda y antes no se veía nada.
             state.enviandoQue?.let { que ->
@@ -245,11 +250,25 @@ private fun BotonCircular(
     Box(
         Modifier
             .size(44.dp)
+            .efectoToque(vibrar = enabled)
             .background(fondo, RoundedCornerShape(50)),
         contentAlignment = Alignment.Center,
     ) {
         IconButton(onClick = onClick, enabled = enabled) { contenido() }
     }
+}
+
+/** Un mensaje que llega o se manda con el chat abierto entra deslizando desde abajo (2026-09-29). */
+@Composable
+private fun EntradaMensaje(animar: Boolean, contenido: @Composable () -> Unit) {
+    val progreso = remember { androidx.compose.animation.core.Animatable(if (animar) 0f else 1f) }
+    LaunchedEffect(Unit) { if (animar) progreso.animateTo(1f, androidx.compose.animation.core.tween(260)) }
+    Box(
+        Modifier.graphicsLayer {
+            alpha = progreso.value
+            translationY = (1f - progreso.value) * 24.dp.toPx()
+        },
+    ) { contenido() }
 }
 
 @Composable

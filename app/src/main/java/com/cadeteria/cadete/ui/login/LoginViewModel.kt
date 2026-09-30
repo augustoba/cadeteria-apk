@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 data class LoginUiState(
     val cargando: Boolean = false,
     val error: String? = null,
+    /** "Tu versión es vieja" (2026-09-29): link de un solo uso para bajar la nueva. */
+    val linkDescarga: String? = null,
 )
 
 class LoginViewModel(private val app: CadeteApp) : ViewModel() {
@@ -42,6 +44,7 @@ class LoginViewModel(private val app: CadeteApp) : ViewModel() {
                             // cuota semanal impaga o contraseña temporal vencida (2026-09-26).
                             else -> it.mensajeDelServidor() ?: "No se pudo conectar con el servidor. Revisá tu conexión."
                         },
+                        linkDescarga = (it as? VersionDesactualizadaException)?.linkDescarga,
                     )
                 }
         }

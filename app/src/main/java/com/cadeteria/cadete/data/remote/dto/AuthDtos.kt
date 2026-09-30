@@ -1,5 +1,11 @@
 package com.cadeteria.cadete.data.remote.dto
 
+/** Permisos que le faltan a la app, separados por coma ("NOTIFICACIONES,BATERIA"); vacío = todos dados (2026-09-29). */
+data class PermisosRequest(val faltantes: String)
+
+/** Link de descarga de un solo uso de la APK actual (2026-09-29), para "Tu versión es vieja". */
+data class LinkApkDto(val url: String?, val venceEn: String?)
+
 data class LoginRequest(
     val username: String,
     val password: String,
