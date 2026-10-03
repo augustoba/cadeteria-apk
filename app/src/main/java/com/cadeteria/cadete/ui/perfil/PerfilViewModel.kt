@@ -50,7 +50,7 @@ class PerfilViewModel(private val app: CadeteApp) : ViewModel() {
     val uiState: StateFlow<PerfilUiState> = _uiState
 
     val tema: StateFlow<TemaApp> = app.sessionManager.tema
-        .stateIn(viewModelScope, SharingStarted.Eagerly, TemaApp.SISTEMA)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, TemaApp.CLARO)
 
     init {
         cargar()

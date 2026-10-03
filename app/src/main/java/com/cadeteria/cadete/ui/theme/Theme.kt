@@ -64,7 +64,7 @@ private val CadeteShapes = Shapes(
 
 @Composable
 fun CadeteAppTheme(
-    tema: TemaApp = TemaApp.SISTEMA,
+    tema: TemaApp = TemaApp.CLARO,
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (tema) {

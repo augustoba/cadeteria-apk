@@ -347,7 +347,7 @@ fun PerfilScreen(
             SeccionCard(titulo = "Apariencia", icono = Icons.Filled.DarkMode) {
                 val temaActual by vm.tema.collectAsState()
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    val opciones = listOf(TemaApp.SISTEMA to "Sistema", TemaApp.CLARO to "Claro", TemaApp.OSCURO to "Oscuro")
+                    val opciones = listOf(TemaApp.CLARO to "Claro", TemaApp.OSCURO to "Oscuro", TemaApp.SISTEMA to "Sistema")
                     opciones.forEachIndexed { index, (valor, etiqueta) ->
                         SegmentedButton(
                             selected = temaActual == valor,

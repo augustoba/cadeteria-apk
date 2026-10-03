@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         val app = application as CadeteApp
         manejarIntent(intent)
         setContent {
-            val tema by app.sessionManager.tema.collectAsState(initial = TemaApp.SISTEMA)
+            val tema by app.sessionManager.tema.collectAsState(initial = TemaApp.CLARO)
             CadeteAppTheme(tema = tema) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CadeteNavGraph()

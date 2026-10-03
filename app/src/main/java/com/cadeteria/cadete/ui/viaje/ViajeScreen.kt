@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cadeteria.cadete.CadeteApp
+import com.cadeteria.cadete.data.remote.dto.EstadoCadete
 import com.cadeteria.cadete.data.remote.dto.EstadoPedido
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.ui.common.BannerError
@@ -149,16 +150,50 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
     }
 
     if (state.preguntarSiSigueLibre && state.festejo == null) {
+        // Tres estados con su nombre (2026-10-03): "Seguir disponible / Desactivarme" no decía en qué
+        // estado quedaba, y el que estaba Ocupado seguía Ocupado.
+        val opciones = listOf(
+            EstadoCadete.LIBRE to "Libre — quiero recibir viajes",
+            EstadoCadete.OCUPADO to "Ocupado — por ahora no recibo viajes",
+            EstadoCadete.DESCONECTADO to "Desconectado — terminé por hoy",
+        )
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Ya no tenés viajes activos") },
-            text = { Text("¿Seguís disponible para recibir viajes o te desactivás?") },
-            confirmButton = {
-                TextButton(onClick = { vm.resolverPreguntaLibre(seguirLibre = true) }) { Text("Seguir disponible") }
+            text = {
+                Column {
+                    Text("¿Cómo querés quedar?")
+                    Spacer(Modifier.height(12.dp))
+                    opciones.forEach { (estado, texto) ->
+                        val actual = state.estadoAlFinalizar == estado
+                        if (estado == EstadoCadete.LIBRE) {
+                            Button(
+                                onClick = { vm.resolverPreguntaLibre(estado) },
+                                enabled = !state.enviando,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(texto) }
+                        } else {
+                            OutlinedButton(
+                                onClick = { vm.resolverPreguntaLibre(estado) },
+                                enabled = !state.enviando,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(texto) }
+                        }
+                        if (actual) {
+                            Text(
+                                "Así estás ahora",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    state.error?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { vm.resolverPreguntaLibre(seguirLibre = false) }) { Text("Desactivarme") }
-            },
+            confirmButton = {},
         )
     }
 

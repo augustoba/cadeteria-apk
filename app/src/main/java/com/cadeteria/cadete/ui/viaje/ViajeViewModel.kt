@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.data.local.ParadaPendiente
 import com.cadeteria.cadete.data.remote.dto.EstadoCadete
+import com.cadeteria.cadete.widget.CadeteWidget
 import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.MarcaEnLugar
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
@@ -32,8 +33,10 @@ data class ViajeUiState(
     val error: String? = null,
     /** true cuando el viaje se cerró (finalizado/quitado/cancelado) — la pantalla se puede cerrar. */
     val terminado: Boolean = false,
-    /** true cuando este era el último viaje activo del cadete — se le pregunta si sigue libre o se desactiva (a pedido del dueño). */
+    /** true cuando este era el último viaje activo del cadete — se le pregunta cómo quiere quedar: Libre, Ocupado o Desconectado (a pedido del dueño). */
     val preguntarSiSigueLibre: Boolean = false,
+    /** Estado que tenía al finalizar (EstadoCadete), para marcarlo en ese cartel; null si no se pudo consultar. */
+    val estadoAlFinalizar: String? = null,
     /** true recién aceptado un viaje — se le pregunta si quiere seguir recibiendo pedidos o ponerse OCUPADO (a pedido del dueño). */
     val preguntarSiQuedaOcupado: Boolean = false,
     /** true cuando "Finalizar" se encoló porque no había conexión — la pantalla queda mostrando el aviso
@@ -444,11 +447,13 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         )
             .onSuccess {
                 val quedanActivos = app.pedidoRepository.viajesActivos().getOrNull()?.isNotEmpty() ?: true
+                val estadoActual = if (quedanActivos) null else app.cadeteRepository.miPerfil().getOrNull()?.estado?.id
                 _uiState.value = _uiState.value.copy(
                     enviando = false,
                     viaje = it,
                     terminado = true,
                     preguntarSiSigueLibre = !quedanActivos,
+                    estadoAlFinalizar = estadoActual,
                     festejo = Festejo.Entregado(it.precio),
                 )
             }
@@ -524,12 +529,28 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
         _uiState.value = _uiState.value.copy(reporteRegistrado = false)
     }
 
-    /** Respuesta al popup "¿Seguís libre o te desactivás?" tras finalizar el último viaje activo. */
-    fun resolverPreguntaLibre(seguirLibre: Boolean) {
-        _uiState.value = _uiState.value.copy(preguntarSiSigueLibre = false)
-        if (seguirLibre) return
+    /**
+     * Respuesta al cartel "¿Cómo querés quedar?" tras finalizar el último viaje activo. Siempre se
+     * manda el estado elegido (2026-10-03): antes "Seguir disponible" solo cerraba el cartel, y el
+     * que se había puesto Ocupado al aceptar seguía Ocupado creyendo que le iban a llegar viajes.
+     * El cartel se cierra recién cuando el servidor contesta; si falla, queda abierto con el error.
+     */
+    fun resolverPreguntaLibre(estado: String) {
+        if (_uiState.value.enviando) return
+        _uiState.value = _uiState.value.copy(enviando = true, error = null)
         viewModelScope.launch {
-            app.cadeteRepository.actualizarEstado(EstadoCadete.DESCONECTADO)
+            app.cadeteRepository.actualizarEstado(estado)
+                .onSuccess { actualizado ->
+                    CadeteWidget.sincronizarEstado(app, actualizado.estado.id, actualizado.nombre)
+                    app.recordatorioEstado.actualizar(actualizado.estado.id)
+                    _uiState.value = _uiState.value.copy(enviando = false, preguntarSiSigueLibre = false)
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        enviando = false,
+                        error = e.mensajeDelServidor() ?: "No se pudo cambiar tu estado — revisá tu conexión y probá de nuevo.",
+                    )
+                }
         }
     }
 
