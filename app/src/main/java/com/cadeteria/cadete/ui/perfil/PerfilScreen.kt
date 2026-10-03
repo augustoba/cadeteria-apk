@@ -27,11 +27,14 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -54,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -97,6 +101,8 @@ fun PerfilScreen(
 
     var passwordActual by remember { mutableStateOf("") }
     var passwordNueva by remember { mutableStateOf("") }
+    var passwordRepetir by remember { mutableStateOf("") }
+    var verPasswords by remember { mutableStateOf(false) }
     var telefono by remember { mutableStateOf("") }
     var cbu by remember { mutableStateOf("") }
     var aliasCbu by remember { mutableStateOf("") }
@@ -197,12 +203,25 @@ fun PerfilScreen(
             Spacer(Modifier.height(16.dp))
 
             SeccionCard(titulo = "Contraseña", icono = Icons.Filled.Lock) {
+                // 2026-10-03: el ojo para ver lo que se escribe (los tres campos a la vez), la nueva dos
+                // veces y, al cambiarla, se cierra la sesión para entrar con la nueva.
+                val transformacion = if (verPasswords) VisualTransformation.None else PasswordVisualTransformation()
+                val ojo: @Composable () -> Unit = {
+                    IconButton(onClick = { verPasswords = !verPasswords }) {
+                        Icon(
+                            if (verPasswords) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = if (verPasswords) "Ocultar contraseñas" else "Mostrar contraseñas",
+                        )
+                    }
+                }
+                val noCoinciden = passwordRepetir.isNotEmpty() && passwordRepetir != passwordNueva
                 OutlinedTextField(
                     value = passwordActual,
                     onValueChange = { passwordActual = it },
                     label = { Text("Contraseña actual") },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    trailingIcon = ojo,
+                    visualTransformation = transformacion,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(10.dp))
@@ -211,8 +230,31 @@ fun PerfilScreen(
                     onValueChange = { passwordNueva = it },
                     label = { Text("Contraseña nueva") },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    trailingIcon = ojo,
+                    visualTransformation = transformacion,
                     modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = passwordRepetir,
+                    onValueChange = { passwordRepetir = it },
+                    label = { Text("Repetir la contraseña nueva") },
+                    singleLine = true,
+                    isError = noCoinciden,
+                    supportingText = if (noCoinciden) {
+                        { Text("Las dos contraseñas nuevas no son iguales.") }
+                    } else {
+                        null
+                    },
+                    trailingIcon = ojo,
+                    visualTransformation = transformacion,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Al cambiarla se cierra la sesión y entrás de nuevo con la contraseña nueva.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(10.dp))
                 Button(
@@ -220,9 +262,17 @@ fun PerfilScreen(
                         vm.cambiarPassword(passwordActual, passwordNueva) {
                             passwordActual = ""
                             passwordNueva = ""
+                            passwordRepetir = ""
+                            android.widget.Toast.makeText(
+                                context,
+                                "Contraseña cambiada. Entrá de nuevo con la contraseña nueva.",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                            onCerrarSesion()
                         }
                     },
-                    enabled = !state.guardandoPassword && passwordActual.isNotBlank() && passwordNueva.isNotBlank(),
+                    enabled = !state.guardandoPassword && passwordActual.isNotBlank() && passwordNueva.isNotBlank() &&
+                        passwordRepetir == passwordNueva,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(if (state.guardandoPassword) "Guardando…" else "Cambiar contraseña") }
             }

@@ -20,8 +20,8 @@ android {
         applicationId = "com.cadeteria.cadete"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         val defaultBaseUrl = project.findProperty("CADETE_APP_DEFAULT_BASE_URL") as String?
             ?: "http://10.0.2.2:8080"
