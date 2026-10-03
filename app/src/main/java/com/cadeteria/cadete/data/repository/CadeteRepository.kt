@@ -26,6 +26,9 @@ class CadeteRepository(private val retrofitProvider: RetrofitProvider) {
     suspend fun miConfiguracion(): Result<CadeteConfigDto> =
         runCatching { retrofitProvider.apiService().miConfiguracion() }
 
+    /** Link de un solo uso para bajar la APK nueva (se pide recién al tocar "Descargar"). */
+    suspend fun linkApk(): Result<String?> = runCatching { retrofitProvider.apiService().linkApk().url }
+
     suspend fun actualizarEstado(estadoId: String): Result<CadeteDto> =
         runCatching { retrofitProvider.apiService().actualizarEstado(EstadoRequest(estadoId)) }
 

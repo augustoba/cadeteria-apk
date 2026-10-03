@@ -128,6 +128,44 @@ fun HomeScreen(
         if (estadoCadete != null) LocationServiceController.iniciar(context)
     }
 
+    if (state.avisoVersionVieja) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = vm::cerrarAvisoVersionVieja,
+            title = { Text("Hay una versión nueva de la app") },
+            text = {
+                Text(
+                    "Para ponerte Libre u Ocupado tenés que actualizarla. Tocá Descargar, instalala encima de esta " +
+                        "(no hace falta desinstalar) y volvé a abrirla.",
+                )
+            },
+            confirmButton = {
+                Button(
+                    enabled = !state.pidiendoLinkDescarga,
+                    onClick = {
+                        vm.pedirLinkDescarga { link ->
+                            if (link == null) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "No se pudo conseguir el link. Revisá tu conexión o pedíselo a la cadetería.",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            } else {
+                                runCatching {
+                                    context.startActivity(
+                                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link)),
+                                    )
+                                }
+                            }
+                        }
+                    },
+                ) { Text(if (state.pidiendoLinkDescarga) "Buscando…" else "⬇ Descargar") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = vm::cerrarAvisoVersionVieja) { Text("Ahora no") }
+            },
+        )
+    }
+
     state.bienvenida?.let { b ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = vm::cerrarBienvenida,

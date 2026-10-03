@@ -20,6 +20,11 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val cargando: Boolean = true,
     val cadete: CadeteDto? = null,
+    /** La app instalada es más vieja que la que exige la cadetería: no puede activarse hasta actualizar (2026-10-03). */
+    val versionVieja: Boolean = false,
+    /** Cartel "Hay una versión nueva": al abrir la app y cada vez que quiere activarse con la vieja. */
+    val avisoVersionVieja: Boolean = false,
+    val pidiendoLinkDescarga: Boolean = false,
     /** Sección "Asignados y en curso" — puede haber más de uno si el tope de viajes lo permite. */
     val activos: List<PedidoDto> = emptyList(),
     /** Viajes con Retirado/parada/Entregado guardado sin señal: la tarjeta lo avisa (2026-09-29). */
@@ -81,11 +86,30 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
     private fun cargarTiempoLimiteAceptacion() {
         viewModelScope.launch {
             app.cadeteRepository.miConfiguracion().onSuccess {
+                // Antes la versión solo se miraba al iniciar sesión: con la sesión abierta se seguía con la vieja.
+                val vieja = com.cadeteria.cadete.BuildConfig.VERSION_CODE < it.versionMinimaApp
                 _uiState.value = _uiState.value.copy(
                     tiempoLimiteAceptacionSeg = it.tiempoLimiteAceptacionSeg,
                     checklistDocumentacionObligatorio = it.checklistDocumentacionObligatorio,
+                    versionVieja = vieja,
+                    avisoVersionVieja = vieja && !_uiState.value.versionVieja,
                 )
             }
+        }
+    }
+
+    fun cerrarAvisoVersionVieja() {
+        _uiState.value = _uiState.value.copy(avisoVersionVieja = false)
+    }
+
+    /** El link es de un solo uso: se pide recién al tocar "Descargar". Null si no se pudo conseguir. */
+    fun pedirLinkDescarga(onLink: (String?) -> Unit) {
+        if (_uiState.value.pidiendoLinkDescarga) return
+        _uiState.value = _uiState.value.copy(pidiendoLinkDescarga = true)
+        viewModelScope.launch {
+            val link = app.cadeteRepository.linkApk().getOrNull()
+            _uiState.value = _uiState.value.copy(pidiendoLinkDescarga = false)
+            onLink(link)
         }
     }
 
@@ -262,6 +286,11 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
     }
 
     private fun cambiarEstado(nuevoEstado: String, onLocationServiceStart: () -> Unit) {
+        // Con la app vieja no se puede activar (el servidor tampoco lo deja); desconectarse, sí.
+        if (_uiState.value.versionVieja && nuevoEstado != EstadoCadete.DESCONECTADO) {
+            _uiState.value = _uiState.value.copy(avisoVersionVieja = true)
+            return
+        }
         _uiState.value = _uiState.value.copy(cambiandoEstado = true)
         viewModelScope.launch {
             app.cadeteRepository.actualizarEstado(nuevoEstado)
