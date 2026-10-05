@@ -18,6 +18,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cadeteria.cadete.CadeteApp
@@ -65,6 +71,8 @@ fun RecuperarPasswordScreen(onListo: () -> Unit, onCancelar: () -> Unit) {
     var codigo by remember { mutableStateOf("") }
     var nuevaPassword by remember { mutableStateOf("") }
     var repetirPassword by remember { mutableStateOf("") }
+    // El ojo (2026-10-05): un solo interruptor muestra u oculta los dos campos, como en Perfil.
+    var verPasswords by remember { mutableStateOf(false) }
 
     BackHandler(enabled = state.paso == PasoRecuperarPassword.PEDIR_USUARIO) { onCancelar() }
     // Paso 2: back del sistema no hace nada — hay que completar el cambio o usar "Corregir usuario".
@@ -157,7 +165,15 @@ fun RecuperarPasswordScreen(onListo: () -> Unit, onCancelar: () -> Unit) {
                                 onValueChange = { nuevaPassword = it },
                                 label = { Text("Contraseña nueva") },
                                 singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { verPasswords = !verPasswords }) {
+                                        Icon(
+                                            if (verPasswords) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                            contentDescription = if (verPasswords) "Ocultar las contraseñas" else "Mostrar las contraseñas",
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (verPasswords) VisualTransformation.None else PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth(),
@@ -168,7 +184,15 @@ fun RecuperarPasswordScreen(onListo: () -> Unit, onCancelar: () -> Unit) {
                                 onValueChange = { repetirPassword = it },
                                 label = { Text("Repetir contraseña") },
                                 singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { verPasswords = !verPasswords }) {
+                                        Icon(
+                                            if (verPasswords) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                            contentDescription = if (verPasswords) "Ocultar las contraseñas" else "Mostrar las contraseñas",
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (verPasswords) VisualTransformation.None else PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth(),
