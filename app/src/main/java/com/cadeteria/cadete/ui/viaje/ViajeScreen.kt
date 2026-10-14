@@ -359,6 +359,9 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                             Amber500,
                         )
                     }
+                    if (viaje.montoDisponer != null && viaje.montoDisponer > 0) {
+                        FilaInfo(Icons.Filled.Payments, "Debés disponer de", formatearPesos(viaje.montoDisponer), Amber500)
+                    }
                     if (viaje.retornaAlOrigen) {
                         FilaInfo(
                             Icons.Filled.Replay, "Con vuelta al origen",

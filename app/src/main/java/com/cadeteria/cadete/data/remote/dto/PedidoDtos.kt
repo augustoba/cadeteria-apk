@@ -27,6 +27,8 @@ data class PedidoDto(
     val montoValores: Double? = null,
     /** Tiene que volver al origen después de entregar (2026-10-14) — llega también en la oferta. */
     val retornaAlOrigen: Boolean = false,
+    /** Plata propia que tiene que tener encima (2026-10-14), null si no hace falta — llega también en la oferta. */
+    val montoDisponer: Double? = null,
     /**
      * Detalle, piso, depto y observaciones de cada dirección: el backend los manda en null
      * mientras la oferta no está aceptada (mejora 2026-09-24) — aparecen al aceptar.

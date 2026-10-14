@@ -120,6 +120,16 @@ fun OfertaPantalla(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
+                    val disponer = viaje.montoDisponer ?: 0.0
+                    if (disponer > 0) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "💵 Debés disponer de ${formatearPesos(disponer)}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Amber500,
+                        )
+                    }
                     if (viaje.retornaAlOrigen) {
                         Spacer(Modifier.height(10.dp))
                         Text(
