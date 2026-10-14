@@ -42,6 +42,7 @@ import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.RutaRetiroEntrega
 import com.cadeteria.cadete.ui.common.formatearPesos
+import com.cadeteria.cadete.ui.theme.Amber500
 import com.cadeteria.cadete.ui.theme.Emerald600
 import com.cadeteria.cadete.ui.theme.EstiloNumero
 import com.cadeteria.cadete.ui.theme.Gray500
@@ -119,6 +120,15 @@ fun OfertaPantalla(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
+                    if (viaje.retornaAlOrigen) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "🔁 Con vuelta: después de entregar volvés al origen",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Amber500,
+                        )
+                    }
                     if (viaje.requiereMoto) {
                         Spacer(Modifier.height(10.dp))
                         Text("🏍️ Requiere moto", style = MaterialTheme.typography.labelLarge, color = Gray500)

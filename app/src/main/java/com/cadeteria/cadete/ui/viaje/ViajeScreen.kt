@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.AlertDialog
@@ -358,8 +359,18 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                             Amber500,
                         )
                     }
-                    if (!viaje.detalle.isNullOrBlank()) {
-                        FilaInfo(Icons.Filled.StickyNote2, "Detalle del pedido", viaje.detalle, Gray500)
+                    if (viaje.retornaAlOrigen) {
+                        FilaInfo(
+                            Icons.Filled.Replay, "Con vuelta al origen",
+                            "Después de entregar, volvé a ${viaje.origenDireccion}",
+                            Amber500,
+                        )
+                    }
+                    // El backend sigue poniendo "🔁 Retorna al origen." en el detalle para las APK viejas:
+                    // acá ya se muestra arriba, no se repite.
+                    val detalle = if (viaje.retornaAlOrigen) viaje.detalle?.removePrefix("🔁 Retorna al origen.")?.trim() else viaje.detalle
+                    if (!detalle.isNullOrBlank()) {
+                        FilaInfo(Icons.Filled.StickyNote2, "Detalle del pedido", detalle, Gray500)
                     }
                 }
             }
