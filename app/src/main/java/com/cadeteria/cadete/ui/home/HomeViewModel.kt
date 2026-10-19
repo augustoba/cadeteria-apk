@@ -308,10 +308,11 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                     // Al pasar a Libre, los avisos de la calle que llegaron mientras estaba desconectado.
                     if (nuevoEstado == EstadoCadete.LIBRE) cargarAvisosCalleCerca()
                 }
-                .onFailure {
+                .onFailure { e ->
+                    // El motivo del servidor (ej. "Tu crédito ($100) no alcanza para el viaje mínimo…", 2026-10-19).
                     _uiState.value = _uiState.value.copy(
                         cambiandoEstado = false,
-                        error = "No se pudo cambiar tu estado.",
+                        error = e.mensajeDelServidor() ?: "No se pudo cambiar tu estado.",
                     )
                 }
         }

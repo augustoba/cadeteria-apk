@@ -7,6 +7,7 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.cadeteria.cadete.CadeteApp
 import com.cadeteria.cadete.data.remote.dto.EstadoCadete
+import com.cadeteria.cadete.data.remote.mensajeDelServidor
 import com.cadeteria.cadete.location.LocationServiceController
 
 /**
@@ -59,8 +60,9 @@ class ToggleDisponibilidadAction : ActionCallback {
                 app.recordatorioEstado.actualizar(actualizado.estado.id)
                 guardarMensaje(context, glanceId, null, actualizado.estado.id, actualizado.nombre)
             }
-            .onFailure {
-                guardarMensaje(context, glanceId, "No se pudo actualizar tu estado.", perfil.estado.id, perfil.nombre)
+            .onFailure { e ->
+                val mensaje = e.mensajeDelServidor() ?: "No se pudo actualizar tu estado."
+                guardarMensaje(context, glanceId, mensaje, perfil.estado.id, perfil.nombre)
             }
     }
 
