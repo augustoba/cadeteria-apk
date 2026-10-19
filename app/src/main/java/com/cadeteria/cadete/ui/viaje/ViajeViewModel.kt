@@ -10,6 +10,7 @@ import com.cadeteria.cadete.data.remote.dto.EventoViaje
 import com.cadeteria.cadete.data.remote.dto.MarcaEnLugar
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
 import com.cadeteria.cadete.data.remote.mensajeDelServidor
+import com.cadeteria.cadete.data.repository.PendingActionsRepository
 import com.cadeteria.cadete.location.ControlEnLugar
 import com.cadeteria.cadete.location.UbicacionMarcada
 import com.cadeteria.cadete.location.ubicacionPrecisa
@@ -77,6 +78,17 @@ data class ViajeUiState(
     /** Desde cuándo corre la espera para poder finalizar: el Retirado del servidor o el guardado sin señal. */
     val retiradoDesde: String? get() = viaje?.retiradoEn?.takeIf { it.isNotBlank() } ?: retiroEncoladoEn
 }
+
+/**
+ * Falla que se arregla sola cuando mejora la señal (2026-10-19): sin conexión, timeout, 5xx, 408/429
+ * o una respuesta que no es del backend (portal de wifi, proxy). Antes solo se encolaba con
+ * IOException: con señal mala salía un error, quedaban los botones y el cadete volvía a finalizar
+ * creyendo que no se había hecho. Un rechazo del servidor (4xx con motivo) sí se muestra.
+ */
+internal fun Throwable.esFallaDeSenal(): Boolean = !PendingActionsRepository.esRechazoDefinitivo(this)
+
+/** Subida de la foto/firma: todo se reintenta desde la cola salvo Cloudinary sin configurar (no se arregla solo). */
+internal fun Throwable.esFallaDeSubidaPasajera(): Boolean = this !is IllegalStateException
 
 /** El tilde animado que se muestra después de aceptar o de entregar (2026-09-29). */
 sealed class Festejo {
@@ -333,7 +345,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             }
             val subida = app.cloudinaryUploader.subir(config.cloudinaryCloudName, config.cloudinaryUploadPreset, foto)
             if (subida.isFailure) {
-                if (subida.exceptionOrNull() is java.io.IOException) {
+                if (subida.exceptionOrNull()?.esFallaDeSubidaPasajera() == true) {
                     encolarRetiradoOffline(id, null, foto.absolutePath, ubicacion, marca)
                 } else {
                     _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo subir la foto.")
@@ -351,7 +363,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 _uiState.value = _uiState.value.copy(enviando = false, viaje = it)
             }
             .onFailure { e ->
-                if (e is java.io.IOException) {
+                if (e.esFallaDeSenal()) {
                     encolarRetiradoOffline(id, fotoUrl, null, ubicacion, marca)
                 } else {
                     _uiState.value = _uiState.value.copy(enviando = false, error = e.mensajeDelServidor() ?: "No se pudo marcar como retirado.")
@@ -399,7 +411,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 _uiState.value = _uiState.value.copy(enviando = false, viaje = it)
             }
             .onFailure { e ->
-                if (e is java.io.IOException) {
+                if (e.esFallaDeSenal()) {
                     encolar()
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -418,7 +430,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
             val config = app.cadeteRepository.miConfiguracion().getOrNull()
             if (accion.foto != null) {
                 val resultado = config?.let { app.cloudinaryUploader.subir(it.cloudinaryCloudName, it.cloudinaryUploadPreset, accion.foto) }
-                if (resultado != null && resultado.isFailure && resultado.exceptionOrNull() !is java.io.IOException) {
+                if (resultado != null && resultado.exceptionOrNull()?.esFallaDeSubidaPasajera() == false) {
                     _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo subir la foto.")
                     return
                 }
@@ -429,7 +441,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 val resultado = config?.let {
                     app.cloudinaryUploader.subir(it.cloudinaryCloudName, it.cloudinaryUploadPreset, accion.firma, "image/jpeg")
                 }
-                if (resultado != null && resultado.isFailure && resultado.exceptionOrNull() !is java.io.IOException) {
+                if (resultado != null && resultado.exceptionOrNull()?.esFallaDeSubidaPasajera() == false) {
                     _uiState.value = _uiState.value.copy(enviando = false, error = "No se pudo subir la firma.")
                     return
                 }
@@ -458,7 +470,7 @@ class ViajeViewModel(private val app: CadeteApp, private val pedidoId: String) :
                 )
             }
             .onFailure { e ->
-                if (e is java.io.IOException) {
+                if (e.esFallaDeSenal()) {
                     encolarFinalizarOffline(id, accion.receptorNombre, fotoUrl, null, firmaUrl, null, ubicacion, marca)
                 } else {
                     _uiState.value = _uiState.value.copy(enviando = false, error = e.mensajeDelServidor() ?: "No se pudo finalizar el viaje.")

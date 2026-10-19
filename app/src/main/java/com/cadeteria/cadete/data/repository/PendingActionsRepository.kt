@@ -73,6 +73,9 @@ class PendingActionsRepository(
         paradas = store.listarParadas().filter { it.pedidoId == pedidoId }.map { it.paradaId }.toSet(),
     )
 
+    /** Viajes con la entrega guardada sin señal: en Inicio se muestran como finalizados (2026-10-19). */
+    suspend fun pedidosConFinalizarEncolado(): Set<String> = store.listar().map { it.pedidoId }.toSet()
+
     /** Viajes con algo guardado sin señal (Retirado, parada o Entregado), para marcarlos en Inicio. */
     suspend fun pedidosConEncolados(): Set<String> =
         (store.listar().map { it.pedidoId } + store.listarRetiros().map { it.pedidoId } +

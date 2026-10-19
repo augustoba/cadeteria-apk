@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -332,6 +333,7 @@ fun HomeScreen(
                                         viaje,
                                         tiempoLimiteAceptacionSeg = state.tiempoLimiteAceptacionSeg,
                                         guardadoSinSenal = viaje.id in state.encolados,
+                                        finalizadoSinSenal = viaje.id in state.finalizadosSinSenal,
                                         onVerDetalle = { onAbrirViaje(viaje.id) },
                                     )
                                 }
@@ -568,6 +570,7 @@ private fun ViajeResumenCard(
     viaje: PedidoDto,
     tiempoLimiteAceptacionSeg: Int,
     guardadoSinSenal: Boolean,
+    finalizadoSinSenal: Boolean,
     onVerDetalle: () -> Unit,
 ) {
     val esPendiente = viaje.estado.id == EstadoPedido.PENDIENTE
@@ -596,11 +599,20 @@ private fun ViajeResumenCard(
             RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
             if (guardadoSinSenal) {
                 Spacer(Modifier.height(10.dp))
-                Text(
-                    "📶 Guardado sin señal — se manda solo cuando vuelva internet.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Gray500,
-                )
+                if (finalizadoSinSenal) {
+                    Text(
+                        "✅ Finalizado — se manda solo cuando vuelva internet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Emerald600,
+                    )
+                } else {
+                    Text(
+                        "📶 Guardado sin señal — se manda solo cuando vuelva internet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Gray500,
+                    )
+                }
             }
             Spacer(Modifier.height(14.dp))
             Button(

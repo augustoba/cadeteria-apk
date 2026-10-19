@@ -245,8 +245,12 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
         // Antes que "cargando/sin viaje": sin señal el detalle no llega, pero la entrega guardada sí se muestra.
         if (state.finalizarEncolado && !state.cargando) {
             Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+                // 2026-10-19: que se lea "finalizado" primero; si parece un error lo vuelven a hacer.
+                Text("✅ Viaje finalizado", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
                 BannerInfo(
-                    "📶 Sin conexión — guardamos la finalización y la vamos a mandar sola apenas vuelva internet, no hace falta que hagas nada más.",
+                    "📶 No había buena señal: la entrega quedó guardada en el celular y se manda sola apenas vuelva " +
+                        "internet. No hace falta que hagas nada más ni que vuelvas a sacar la foto o la firma.",
                     Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))

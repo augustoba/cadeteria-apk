@@ -29,6 +29,8 @@ data class HomeUiState(
     val activos: List<PedidoDto> = emptyList(),
     /** Viajes con Retirado/parada/Entregado guardado sin señal: la tarjeta lo avisa (2026-09-29). */
     val encolados: Set<String> = emptySet(),
+    /** De esos, los que tienen la entrega guardada: la tarjeta dice "Finalizado" (2026-10-19). */
+    val finalizadosSinSenal: Set<String> = emptySet(),
     /** Incidente por reclamo de un cliente: mientras esté abierto no le llegan pedidos (2026-09-26). */
     val incidenteAbierto: com.cadeteria.cadete.data.remote.dto.IncidenteAbiertoDto? = null,
     val error: String? = null,
@@ -201,9 +203,11 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
             val activos = app.pedidoRepository.viajesActivos()
             val incidente = app.cadeteRepository.incidenteAbierto().getOrNull()
             val encolados = app.pendingActionsRepository.pedidosConEncolados()
+            val finalizadosSinSenal = app.pendingActionsRepository.pedidosConFinalizarEncolado()
             _uiState.value = _uiState.value.copy(
                 incidenteAbierto = incidente,
                 encolados = encolados,
+                finalizadosSinSenal = finalizadosSinSenal,
                 cargando = false,
                 cadete = perfil.getOrNull(),
                 // El asignado sin aceptar (PENDIENTE) va primero — tiene tiempo límite para
