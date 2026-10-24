@@ -48,6 +48,8 @@ data class HomeUiState(
     val avisoFlotante: String? = null,
     /** Para la cuenta regresiva del viaje PENDIENTE en la tarjeta de "Asignados y en curso". */
     val tiempoLimiteAceptacionSeg: Int = 120,
+    /** Monto de "crédito bajo" de Configuración: debajo de eso Inicio muestra un cartel fijo (2026-10-24). */
+    val creditoBajoUmbral: Double? = null,
     /** Checklist de documentación obligatoria antes de activarse (mejora 2026-09-16). */
     val checklistDocumentacionObligatorio: Boolean = false,
     /** Si no está vacía, se muestra el diálogo de "te falta cargar esto antes de activarte". */
@@ -92,6 +94,7 @@ class HomeViewModel(private val app: CadeteApp) : ViewModel() {
                 val vieja = com.cadeteria.cadete.BuildConfig.VERSION_CODE < it.versionMinimaApp
                 _uiState.value = _uiState.value.copy(
                     tiempoLimiteAceptacionSeg = it.tiempoLimiteAceptacionSeg,
+                    creditoBajoUmbral = it.creditoBajoAlertaUmbral,
                     checklistDocumentacionObligatorio = it.checklistDocumentacionObligatorio,
                     versionVieja = vieja,
                     avisoVersionVieja = vieja && !_uiState.value.versionVieja,

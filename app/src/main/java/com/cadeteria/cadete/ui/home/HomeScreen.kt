@@ -272,6 +272,20 @@ fun HomeScreen(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                // Fijo mientras esté por debajo (2026-10-24): el push solo se perdía si no lo veía.
+                val cadeteActual = state.cadete
+                val umbralCredito = state.creditoBajoUmbral
+                if (cadeteActual != null && umbralCredito != null && cadeteActual.modalidadPago == "PORCENTAJE" &&
+                    cadeteActual.creditoDisponible < umbralCredito
+                ) {
+                    BannerError(
+                        "💳 Te queda poco crédito (${formatearPesos(cadeteActual.creditoDisponible)}). Cargá con la " +
+                            "cadetería para seguir recibiendo viajes.",
+                        Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 // Reclamo de un cliente sin cerrar (2026-09-26): explica por qué no le llegan pedidos.
                 state.incidenteAbierto?.let { inc ->
                     BannerError(

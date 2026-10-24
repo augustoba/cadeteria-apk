@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,8 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cadeteria.cadete.data.remote.dto.PedidoDto
+import com.cadeteria.cadete.ui.common.BannerDineroDisponer
 import com.cadeteria.cadete.ui.common.BannerError
 import com.cadeteria.cadete.ui.common.ContadorAceptacion
 import com.cadeteria.cadete.ui.common.RutaRetiroEntrega
@@ -69,6 +74,29 @@ fun OfertaPantalla(
     onAceptar: () -> Unit,
     onRechazar: () -> Unit,
 ) {
+    val disponer = viaje.montoDisponer ?: 0.0
+    var confirmarDinero by remember { mutableStateOf(false) }
+    if (confirmarDinero && disponer > 0) {
+        AlertDialog(
+            onDismissRequest = { confirmarDinero = false },
+            title = { Text("💵 Este viaje requiere dinero") },
+            text = {
+                Text(
+                    "Debés tener ${formatearPesos(disponer)} para hacer este viaje. ¿Lo tenés y aceptás?",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmarDinero = false
+                    onAceptar()
+                }) { Text("Sí, acepto", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarDinero = false }) { Text("Volver") }
+            },
+        )
+    }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             Modifier
@@ -90,6 +118,12 @@ fun OfertaPantalla(
                 Spacer(Modifier.height(12.dp))
             }
 
+            // Lo primero que se ve después del reloj (2026-10-24): antes era una línea chica en la tarjeta de la ruta.
+            if (disponer > 0) {
+                BannerDineroDisponer(disponer)
+                Spacer(Modifier.height(12.dp))
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 DatoOferta(
                     "Distancia",
@@ -99,8 +133,9 @@ fun OfertaPantalla(
                 )
                 DatoOferta("Pago", formatearPesos(viaje.precio), null, Modifier.weight(1f))
                 val dinero = viaje.montoDeclarado ?: 0.0
+                // "Transporta" y no "Dinero": es lo que lleva del cliente, no lo que pone él (eso va en el recuadro de arriba).
                 DatoOferta(
-                    "Dinero",
+                    "Transporta",
                     if (dinero > 0) formatearPesos(dinero) else "No",
                     if (viaje.llevaValores) {
                         viaje.montoValores?.let { "+ ${formatearPesos(it)} en valores" } ?: "y lleva valores"
@@ -120,16 +155,6 @@ fun OfertaPantalla(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     RutaRetiroEntrega(viaje.origenDireccion, viaje.destinoDireccion)
-                    val disponer = viaje.montoDisponer ?: 0.0
-                    if (disponer > 0) {
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            "💵 Debés disponer de ${formatearPesos(disponer)}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Amber500,
-                        )
-                    }
                     if (viaje.retornaAlOrigen) {
                         Spacer(Modifier.height(10.dp))
                         Text(
@@ -163,7 +188,8 @@ fun OfertaPantalla(
                 val context = LocalContext.current
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
-                        onClick = onAceptar,
+                        // Con dinero a disponer, antes el cartel de confirmación: aceptaban sin leerlo (2026-10-24).
+                        onClick = { if (disponer > 0) confirmarDinero = true else onAceptar() },
                         modifier = Modifier
                             .weight(0.7f)
                             .height(60.dp)

@@ -10,6 +10,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -114,6 +115,37 @@ fun BannerInfo(mensaje: String, modifier: Modifier = Modifier) {
             .padding(12.dp)
     ) {
         Text(mensaje, color = Color(0xFF1E40AF), style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/**
+ * Recuadro grande del dinero que el cadete tiene que poner de su bolsillo (2026-10-24): antes era
+ * una línea chica dentro de la tarjeta de la ruta y aceptaban sin leerla.
+ */
+@Composable
+fun BannerDineroDisponer(monto: Double, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFEF3C7), RoundedCornerShape(12.dp))
+            .border(2.dp, Color(0xFFF59E0B), RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "💵 Debés tener dinero para este viaje",
+            color = Color(0xFF92400E),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            formatearPesos(monto),
+            color = Color(0xFF92400E),
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

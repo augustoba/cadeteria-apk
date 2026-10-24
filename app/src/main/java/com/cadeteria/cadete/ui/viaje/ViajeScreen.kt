@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
+import com.cadeteria.cadete.ui.common.BannerDineroDisponer
 import com.cadeteria.cadete.ui.common.ConfirmacionAnimada
 import com.cadeteria.cadete.ui.common.Vibracion
 import com.cadeteria.cadete.ui.common.efectoToque
@@ -335,6 +336,12 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
             }
 
+            // Mismo recuadro que en la oferta (2026-10-24), así lo tiene presente al llegar al retiro.
+            if (viaje.montoDisponer != null && viaje.montoDisponer > 0) {
+                BannerDineroDisponer(viaje.montoDisponer)
+                Spacer(Modifier.height(16.dp))
+            }
+
             Card(
                 Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -362,9 +369,6 @@ fun ViajeScreen(pedidoId: String, onVolver: () -> Unit) {
                             viaje.montoValores?.let { "Declarados por ${formatearPesos(it)}" } ?: "Objetos de valor declarados por el cliente",
                             Amber500,
                         )
-                    }
-                    if (viaje.montoDisponer != null && viaje.montoDisponer > 0) {
-                        FilaInfo(Icons.Filled.Payments, "Debés disponer de", formatearPesos(viaje.montoDisponer), Amber500)
                     }
                     if (viaje.retornaAlOrigen) {
                         FilaInfo(
